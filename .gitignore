@@ -1,0 +1,7 @@
+bin/
+obj/
+node_modules/
+.expo/
+*.user
+appsettings.Development.json
+.env

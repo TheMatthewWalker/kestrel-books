@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "KestrelBooks",
+    "slug": "kestrelbooks",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": { "backgroundColor": "#0F1B2D" },
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.kestrelbooks.app" },
+    "platforms": ["ios", "android"]
+  }
+}
