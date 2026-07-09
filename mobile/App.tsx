@@ -16,6 +16,8 @@ import MoneyScreen from './src/screens/MoneyScreen';
 import JournalsScreen from './src/screens/JournalsScreen';
 import AssetsScreen from './src/screens/AssetsScreen';
 import ReportsScreen from './src/screens/ReportsScreen';
+import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
+import ReconciliationScreen from './src/screens/ReconciliationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,6 +52,8 @@ function Root() {
           <Stack.Screen name="Journals" component={JournalsScreen} />
           <Stack.Screen name="Assets" component={AssetsScreen} options={{ title: 'Fixed Assets' }} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="ReceiptScan" component={ReceiptScanScreen} options={{ title: 'Scan Receipt' }} />
+          <Stack.Screen name="Reconciliation" component={ReconciliationScreen} options={{ title: 'Bank Reconciliation' }} />
         </>
       )}
     </Stack.Navigator>

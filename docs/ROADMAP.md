@@ -1,8 +1,9 @@
 # Roadmap
 
 ## Bank feeds & reconciliation
-- v1.1: CSV/OFX statement import → suggested matches against posted bank
-  lines (amount+date proximity) → one-tap confirm creates the receipt/payment.
+- ~~v1.1: CSV/OFX statement import → suggested matches against posted bank
+  lines (amount+date proximity) → one-tap confirm creates the receipt/payment.~~
+  **Shipped in v1.1** — see BankImportService + Reconciliation screen.
 - Later: live Open Banking feeds. Direct AISP access requires FCA
   registration, so the practical route is an aggregator (TrueLayer /
   GoCardless Bank Account Data / Plaid). The importer will be an adapter
@@ -33,3 +34,9 @@
 ## App Store
 Expo Go is fine for personal use. Distribution needs an Apple Developer
 account ($99/yr) + `eas build`; TestFlight is the low-friction middle step.
+
+## Receipt scanning (shipped v1.1, next steps)
+- Multi-line receipts (split one scan across several expense accounts).
+- Attach the image to the resulting purchase invoice in the UI.
+- On-device pre-crop / de-skew before upload.
+- Batch mode: photograph a stack, review as a queue.

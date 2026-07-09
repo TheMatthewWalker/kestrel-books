@@ -21,6 +21,9 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
     public DbSet<MoneyTransaction> MoneyTransactions => Set<MoneyTransaction>();
     public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
+    public DbSet<BankStatementImport> BankStatementImports => Set<BankStatementImport>();
+    public DbSet<BankStatementLine> BankStatementLines => Set<BankStatementLine>();
+    public DbSet<ReceiptScan> ReceiptScans => Set<ReceiptScan>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -59,5 +62,15 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<FixedAsset>().Property(x => x.ResidualValue).HasPrecision(18, 2);
         b.Entity<FixedAsset>().Property(x => x.AccumulatedDepreciation).HasPrecision(18, 2);
         b.Entity<FixedAsset>().Property(x => x.AnnualRatePercent).HasPrecision(9, 4);
+
+        b.Entity<BankStatementImport>()
+            .HasMany(x => x.Lines).WithOne(x => x.Import)
+            .HasForeignKey(x => x.ImportId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<BankStatementLine>().Property(x => x.Amount).HasPrecision(18, 2);
+        b.Entity<BankStatementLine>().HasIndex(x => new { x.BusinessId, x.BankAccountId, x.ExternalRef });
+
+        b.Entity<ReceiptScan>().Property(x => x.NetAmount).HasPrecision(18, 2);
+        b.Entity<ReceiptScan>().Property(x => x.VatAmount).HasPrecision(18, 2);
+        b.Entity<ReceiptScan>().Property(x => x.GrossAmount).HasPrecision(18, 2);
     }
 }

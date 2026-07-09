@@ -6,6 +6,8 @@ import { Screen } from '../components/ui';
 import { colors, gbp, spacing, type } from '../theme';
 
 const tiles = [
+  { title: 'Scan receipt', route: 'ReceiptScan' },
+  { title: 'Bank reconciliation', route: 'Reconciliation' },
   { title: 'Sales invoices', route: 'Invoices', params: { kind: 'sales' } },
   { title: 'Purchase invoices', route: 'Invoices', params: { kind: 'purchase' } },
   { title: 'Money in / out', route: 'Money' },

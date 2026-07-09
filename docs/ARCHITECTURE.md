@@ -67,3 +67,36 @@ Computed on demand from posted lines:
 - Every business-scoped endpoint calls `AccessService.EnsureAccessAsync`,
   checking the `UserBusinessAccess` join table — one user, many clients;
   one client, many users (Owner / Bookkeeper / ReadOnly roles).
+
+## Bank reconciliation (v1.1)
+
+Statement files (CSV/OFX) import into `BankStatementLine` rows, deduplicated
+by FITID (OFX) or a row hash (CSV) so re-importing an overlapping export is
+safe. Reconciliation pairs each line with a posted journal line on the same
+bank account:
+
+- **Suggestions** require the exact amount on the correct side within ±7
+  days, and never offer a journal line already claimed by another statement
+  line.
+- **Match** records the pairing; **Exclude** consciously sets a line aside;
+  **Create transaction** raises and posts a receipt/payment directly from
+  the line and reconciles it in one step.
+
+*AAT tie-in:* this is the bank reconciliation statement logic — the ledger
+(cash book) and the bank statement are two independent records of the same
+account, and unmatched statement lines are the classic reconciling items
+(direct debits, charges, receipts not yet recorded).
+
+## Receipt scanning (v1.1)
+
+Photos upload to `Storage/receipts/` on the server (kept as source
+documents). Extraction is pluggable via `IReceiptExtractor`:
+`ClaudeReceiptExtractor` (Anthropic vision API, used when `Anthropic:ApiKey`
+is configured) or `ManualReceiptExtractor` (user keys the fields). Confirming
+a scan produces either:
+
+- **On account:** a draft purchase invoice through Trade Creditors (vendor
+  auto-created by name if new), or
+- **Paid on the spot:** an immediately posted money-out, with the VAT element
+  journalled out of the expense account into Input VAT so the reclaim isn't
+  lost — gross credits bank, net lands in the expense, VAT in Input VAT.

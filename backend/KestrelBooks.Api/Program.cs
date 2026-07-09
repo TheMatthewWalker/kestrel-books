@@ -45,6 +45,13 @@ builder.Services.AddScoped<PostingService>();
 builder.Services.AddScoped<DocumentPostingService>();
 builder.Services.AddScoped<DepreciationService>();
 builder.Services.AddScoped<ReportService>();
+builder.Services.AddScoped<BankImportService>();
+builder.Services.AddSingleton<ReceiptStorageService>();
+builder.Services.AddHttpClient();
+if (!string.IsNullOrEmpty(builder.Configuration["Anthropic:ApiKey"]))
+    builder.Services.AddScoped<IReceiptExtractor, ClaudeReceiptExtractor>();
+else
+    builder.Services.AddScoped<IReceiptExtractor, ManualReceiptExtractor>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
