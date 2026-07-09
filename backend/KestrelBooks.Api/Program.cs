@@ -63,12 +63,12 @@ builder.Services.AddCors(o => o.AddPolicy("mobile", p =>
 
 var app = builder.Build();
 
-// Dev convenience: create the database on first run.
-// For production switch to EF migrations: dotnet ef migrations add Init && dotnet ef database update
+// Apply any pending EF Core migrations on startup (creates the database if absent).
+// Generate migrations with: dotnet ef migrations add <Name>   (see README).
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.EnsureCreated();
+    db.Database.Migrate();
 }
 
 app.UseSwagger();

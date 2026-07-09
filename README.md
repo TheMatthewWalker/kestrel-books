@@ -28,15 +28,24 @@ reporting — served from your own machine to an iOS app.
    `--urls http://0.0.0.0:5000` binds to all interfaces so your phone can
    reach it over your LAN. Allow port 5000 through Windows Firewall when prompted.
 
-   The database schema is created automatically on first run
-   (`EnsureCreated`). For production, switch to migrations:
-   `dotnet ef migrations add Init && dotnet ef database update`.
+   The app uses **EF Core migrations**. Before the first run, install the
+   EF tool and generate the initial migration (one-off):
 
-   > **Upgrading between versions:** `EnsureCreated` does not alter an
-   > existing database. After pulling a version that adds tables/columns
-   > (v1.1 banking/receipts, v1.2 inventory/production), either drop the
-   > dev database (`DROP DATABASE kestrelbooks;`) and let it recreate, or
-   > use EF migrations.
+   ```bash
+   dotnet tool install --global dotnet-ef
+   cd backend/KestrelBooks.Api
+   dotnet ef migrations add InitialCreate
+   ```
+
+   This scaffolds a `Migrations/` folder (commit it — it's source code).
+   Startup calls `Database.Migrate()`, which creates the database and
+   applies any pending migrations automatically, so after that you just
+   `dotnet run`.
+
+   > **When the schema changes** (yours or a new KestrelBooks version):
+   > `dotnet ef migrations add <DescriptiveName>` then restart. EF diffs
+   > the entity model against the last snapshot and writes only the delta —
+   > existing data is preserved, unlike the old `EnsureCreated` approach.
 
 5. Swagger UI is at `http://localhost:5000/swagger` — useful for testing the
    API without the app.
