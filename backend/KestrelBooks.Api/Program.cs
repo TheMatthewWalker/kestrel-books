@@ -48,6 +48,9 @@ builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<BankImportService>();
 builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<ProductionService>();
+builder.Services.AddScoped<HmrcService>();
+builder.Services.AddScoped<VatReturnService>();
+builder.Services.AddDataProtection();
 builder.Services.AddSingleton<ReceiptStorageService>();
 builder.Services.AddHttpClient();
 if (!string.IsNullOrEmpty(builder.Configuration["Anthropic:ApiKey"]))

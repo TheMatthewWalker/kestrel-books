@@ -146,3 +146,42 @@ the P&L are the seeds of over/under-absorption analysis.
 `POST /inventory/enable` (called automatically when the Inventory screen
 opens) idempotently adds the tagged accounts (RM/WIP/FG stock, COGS,
 absorption, adjustments) to charts seeded before this version.
+
+## HMRC Making Tax Digital (v1.3)
+
+### Connection
+OAuth2 authorization code grant per business. The app opens HMRC's authorise
+page in the phone browser; HMRC redirects to `/api/mtd/callback` on your
+server. The `state` parameter is encrypted with ASP.NET Data Protection and
+carries the business/user identity — CSRF-safe with no server session.
+Access tokens (4h) refresh automatically; HMRC rotates refresh tokens on
+every use, so the stored token is always the latest.
+
+### Fraud prevention headers
+Every HMRC call carries the mandatory `Gov-Client-*` set for connection
+method `MOBILE_APP_VIA_SERVER`. The app registers device details (stable
+device ID, OS, timezone, screen) once; the server adds vendor and IP
+headers. `GET /api/mtd/businesses/{id}/validate-fraud-headers` proxies
+HMRC's sandbox validator — run it before going live.
+
+### VAT workflow
+1. Open obligations are fetched from HMRC (`status=O`).
+2. Tapping one computes the 9 boxes from the ledger: box 1 = Output VAT
+   control movement, box 4 = Input VAT control movement, boxes 6/7 = posted
+   invoice net totals, boxes 2/8/9 default 0 (NI protocol goods only).
+3. The preview is editable (boxes 3 and 5 recalculate) — the bookkeeper
+   confirms, agrees the legal declaration, and submits.
+4. HMRC's receipt (form bundle number) is stored in `VatSubmission` for
+   audit; HMRC remains the source of truth.
+
+*AAT tie-in:* box 1 vs box 4 is exactly the output/input side of the VAT
+control account, and box 5 is its net balance — the return is a periodic
+agreement of that control account with HMRC.
+
+### ITSA
+Business list and obligations are fetched live; quarterly updates submit
+turnover + consolidated expenses computed from the P&L for the quarter
+(overridable). Consolidated expenses are permitted below the VAT threshold;
+detailed SA103 category mapping is on the roadmap. ITSA API versions
+iterate quickly — the paths are constants at the top of `MtdController`;
+verify against developer.service.hmrc.gov.uk before go-live.

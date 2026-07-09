@@ -27,6 +27,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<StockMovement> StockMovements => Set<StockMovement>();
     public DbSet<BillOfMaterial> BillOfMaterials => Set<BillOfMaterial>();
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
+    public DbSet<HmrcConnection> HmrcConnections => Set<HmrcConnection>();
+    public DbSet<VatSubmission> VatSubmissions => Set<VatSubmission>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -102,5 +104,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<ProductionOrder>().Property(x => x.OverheadCost).HasPrecision(18, 2);
         b.Entity<ProductionOrder>()
             .HasOne(x => x.Item).WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<HmrcConnection>().HasIndex(x => x.BusinessId).IsUnique();
     }
 }

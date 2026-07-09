@@ -20,6 +20,7 @@ import ReceiptScanScreen from './src/screens/ReceiptScanScreen';
 import ReconciliationScreen from './src/screens/ReconciliationScreen';
 import InventoryScreen from './src/screens/InventoryScreen';
 import ProductionScreen from './src/screens/ProductionScreen';
+import MtdScreen from './src/screens/MtdScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -58,6 +59,7 @@ function Root() {
           <Stack.Screen name="Reconciliation" component={ReconciliationScreen} options={{ title: 'Bank Reconciliation' }} />
           <Stack.Screen name="Inventory" component={InventoryScreen} options={{ title: 'Inventory' }} />
           <Stack.Screen name="Production" component={ProductionScreen} options={{ title: 'Production' }} />
+          <Stack.Screen name="Mtd" component={MtdScreen} options={{ title: 'HMRC — Making Tax Digital' }} />
         </>
       )}
     </Stack.Navigator>

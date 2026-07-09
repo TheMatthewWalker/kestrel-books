@@ -9,14 +9,16 @@
   GoCardless Bank Account Data / Plaid). The importer will be an adapter
   interface so a provider can slot in without touching reconciliation logic.
 
-## Making Tax Digital (HMRC)
-`MtdController` already builds the sandbox authorise URL. Remaining:
-- OAuth2 token exchange + per-business token storage and refresh.
-- Mandatory `Gov-Client-*` fraud prevention headers.
-- MTD for Income Tax (quarterly updates + EOY declaration) — live from
-  April 2026 for sole traders/landlords over £50k, so the ITSA endpoints
-  are the priority over VAT for self-assessment clients.
-- Register the app at developer.service.hmrc.gov.uk (sandbox is free).
+## Making Tax Digital (HMRC) — shipped v1.3, next steps
+- ~~OAuth2 token exchange + storage/refresh; fraud prevention headers;
+  VAT obligations/9-box submission; ITSA obligations + quarterly updates.~~
+  **Shipped in v1.3.**
+- ITSA end-of-year: annual summary, final declaration (crystallisation).
+- SA103 expense category mapping (account SubType → SA103 box) instead of
+  consolidated expenses for clients over the threshold.
+- VAT liabilities & payments endpoints; view previously submitted returns
+  from HMRC rather than local audit copies.
+- Production credential checks + terms-of-use checklist for going live.
 
 ## Auth
 - Refresh tokens; then OpenIddict to make the API a full OAuth2/OIDC

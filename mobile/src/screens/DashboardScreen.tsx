@@ -19,6 +19,7 @@ const tiles = [
   { title: 'Customers & vendors', route: 'Contacts' },
   { title: 'Products & services', route: 'Items' },
   { title: 'Chart of accounts', route: 'Accounts' },
+  { title: 'HMRC / MTD', route: 'Mtd' },
 ];
 
 export default function DashboardScreen({ route, navigation }: any) {
