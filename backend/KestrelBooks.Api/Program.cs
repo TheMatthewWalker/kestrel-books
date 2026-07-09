@@ -46,6 +46,8 @@ builder.Services.AddScoped<DocumentPostingService>();
 builder.Services.AddScoped<DepreciationService>();
 builder.Services.AddScoped<ReportService>();
 builder.Services.AddScoped<BankImportService>();
+builder.Services.AddScoped<StockService>();
+builder.Services.AddScoped<ProductionService>();
 builder.Services.AddSingleton<ReceiptStorageService>();
 builder.Services.AddHttpClient();
 if (!string.IsNullOrEmpty(builder.Configuration["Anthropic:ApiKey"]))

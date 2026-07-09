@@ -40,3 +40,11 @@ account ($99/yr) + `eas build`; TestFlight is the low-friction middle step.
 - Attach the image to the resulting purchase invoice in the UI.
 - On-device pre-crop / de-skew before upload.
 - Batch mode: photograph a stack, review as a queue.
+
+## Manufacturing (shipped v1.2, next steps)
+- FIFO cost layers as an alternative to AVCO (per business setting).
+- Partial material issues and partial order completions; scrap/yield recording.
+- Multi-level BOMs (sub-assemblies) with recursive cost roll-up.
+- Purchase orders and goods-received-notes ahead of the invoice (3-way match).
+- Stock take mode: enter counted quantities, post variance adjustments in bulk.
+- Over/under-absorption report comparing absorbed labour/overhead to actuals.

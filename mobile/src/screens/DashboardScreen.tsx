@@ -14,6 +14,8 @@ const tiles = [
   { title: 'Journals', route: 'Journals' },
   { title: 'Reports', route: 'Reports' },
   { title: 'Fixed assets', route: 'Assets' },
+  { title: 'Inventory', route: 'Inventory' },
+  { title: 'Production', route: 'Production' },
   { title: 'Customers & vendors', route: 'Contacts' },
   { title: 'Products & services', route: 'Items' },
   { title: 'Chart of accounts', route: 'Accounts' },

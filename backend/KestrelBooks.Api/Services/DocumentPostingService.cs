@@ -23,9 +23,10 @@ public class DocumentPostingService
 {
     private readonly AppDbContext _db;
     private readonly PostingService _posting;
-    public DocumentPostingService(AppDbContext db, PostingService posting)
+    private readonly StockService _stock;
+    public DocumentPostingService(AppDbContext db, PostingService posting, StockService stock)
     {
-        _db = db; _posting = posting;
+        _db = db; _posting = posting; _stock = stock;
     }
 
     public async Task<JournalEntry> PostSalesInvoiceAsync(Guid businessId, Guid invoiceId, Guid userId)
@@ -51,10 +52,34 @@ public class DocumentPostingService
         if (inv.VatTotal > 0)
             lines.Add(new DraftLine(outputVat.Id, 0, inv.VatTotal, $"Output VAT — invoice {inv.Number}"));
 
+        // Perpetual inventory: issue tracked items at AVCO and post COGS in the same journal
+        // (Dr Cost of Goods Sold / Cr Finished Goods or Raw Materials stock).
+        var itemIds = inv.Lines.Where(l => l.ItemId != null).Select(l => l.ItemId!.Value).ToList();
+        var trackedItems = await _db.Items
+            .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
+            .ToDictionaryAsync(i => i.Id);
+        var stockMovements = new List<StockMovement>();
+        foreach (var line in inv.Lines.Where(l => l.ItemId != null && trackedItems.ContainsKey(l.ItemId!.Value)))
+        {
+            var item = trackedItems[line.ItemId!.Value];
+            var movement = await _stock.MoveAsync(item, inv.Date, StockMovementType.SaleIssue,
+                -line.Quantity, null, null, inv.Id, $"Sold on invoice {inv.Number}");
+            stockMovements.Add(movement);
+            var cogsValue = Math.Abs(movement.Value);
+            if (cogsValue > 0)
+            {
+                lines.Add(new DraftLine(await _stock.CogsAccountIdAsync(item), cogsValue, 0,
+                    $"COGS {item.Code} × {line.Quantity}"));
+                lines.Add(new DraftLine(await _stock.StockAccountIdAsync(item), 0, cogsValue,
+                    $"Stock issue {item.Code} × {line.Quantity}"));
+            }
+        }
+
         var journal = await _posting.CreateDraftAsync(businessId, userId, inv.Date,
             inv.Number, $"Sales invoice {inv.Number} — {inv.Customer.Name}",
             SourceType.SalesInvoice, inv.Id, lines);
         await _posting.PostAsync(businessId, journal.Id, userId);
+        foreach (var m in stockMovements) m.JournalEntryId = journal.Id;
 
         inv.Status = DocumentStatus.Posted;
         inv.JournalEntryId = journal.Id;
@@ -76,9 +101,35 @@ public class DocumentPostingService
         var creditors = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.TradeCreditors);
         var inputVat = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.VatInput);
 
+        // Perpetual inventory: tracked items are capitalised into stock, not expensed —
+        // resolve each line to its stock account and receive quantity at the line's unit cost.
+        var itemIds = inv.Lines.Where(l => l.ItemId != null).Select(l => l.ItemId!.Value).ToList();
+        var trackedItems = await _db.Items
+            .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
+            .ToDictionaryAsync(i => i.Id);
+
+        var resolved = new List<(Guid accountId, decimal net)>();
+        var stockMovements = new List<StockMovement>();
+        foreach (var line in inv.Lines)
+        {
+            if (line.ItemId != null && trackedItems.TryGetValue(line.ItemId.Value, out var item))
+            {
+                var stockAcc = await _stock.StockAccountIdAsync(item);
+                resolved.Add((stockAcc, line.Net));
+                var movement = await _stock.MoveAsync(item, inv.Date, StockMovementType.PurchaseReceipt,
+                    line.Quantity, line.Quantity != 0 ? Math.Round(line.Net / line.Quantity, 4) : 0,
+                    null, inv.Id, $"Received on invoice {inv.Number}");
+                stockMovements.Add(movement);
+            }
+            else
+            {
+                resolved.Add((line.AccountId, line.Net));
+            }
+        }
+
         var lines = new List<DraftLine>();
-        foreach (var g in inv.Lines.GroupBy(l => l.AccountId))
-            lines.Add(new DraftLine(g.Key, g.Sum(l => l.Net), 0, $"Purchase — invoice {inv.Number}"));
+        foreach (var g in resolved.GroupBy(r => r.accountId))
+            lines.Add(new DraftLine(g.Key, g.Sum(r => r.net), 0, $"Purchase — invoice {inv.Number}"));
         if (inv.VatTotal > 0)
             lines.Add(new DraftLine(inputVat.Id, inv.VatTotal, 0, $"Input VAT — invoice {inv.Number}"));
         lines.Add(new DraftLine(creditors.Id, 0, inv.GrossTotal, $"{inv.Vendor.Name} — invoice {inv.Number}"));
@@ -87,6 +138,7 @@ public class DocumentPostingService
             inv.Number, $"Purchase invoice {inv.Number} — {inv.Vendor.Name}",
             SourceType.PurchaseInvoice, inv.Id, lines);
         await _posting.PostAsync(businessId, journal.Id, userId);
+        foreach (var m in stockMovements) m.JournalEntryId = journal.Id;
 
         inv.Status = DocumentStatus.Posted;
         inv.JournalEntryId = journal.Id;

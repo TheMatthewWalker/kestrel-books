@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 namespace KestrelBooks.Api.Controllers;
 
 public record ItemRequest(ItemKind Kind, string Code, string Name, decimal SalesPrice,
-    decimal PurchasePrice, VatRate DefaultVatRate, Guid? SalesAccountId, Guid? PurchaseAccountId);
+    decimal PurchasePrice, VatRate DefaultVatRate, Guid? SalesAccountId, Guid? PurchaseAccountId,
+    bool TrackStock = false, Guid? InventoryAccountId = null, Guid? CogsAccountId = null);
 
 [ApiController]
 [Authorize]
@@ -55,5 +56,7 @@ public class ItemsController : ControllerBase
         i.SalesPrice = req.SalesPrice; i.PurchasePrice = req.PurchasePrice;
         i.DefaultVatRate = req.DefaultVatRate;
         i.SalesAccountId = req.SalesAccountId; i.PurchaseAccountId = req.PurchaseAccountId;
+        i.TrackStock = req.TrackStock;
+        i.InventoryAccountId = req.InventoryAccountId; i.CogsAccountId = req.CogsAccountId;
     }
 }

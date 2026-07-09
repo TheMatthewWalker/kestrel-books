@@ -15,6 +15,13 @@ public static class SystemTags
     public const string DefaultBank = "BANK_DEFAULT";
     public const string RetainedEarnings = "RETAINED_EARNINGS";
     public const string AssetsUnderConstruction = "AUC";
+    public const string StockRawMaterials = "STOCK_RM";
+    public const string StockWip = "STOCK_WIP";
+    public const string StockFinishedGoods = "STOCK_FG";
+    public const string CostOfGoodsSold = "COGS";
+    public const string LabourAbsorbed = "LABOUR_ABSORBED";
+    public const string OverheadAbsorbed = "OVERHEAD_ABSORBED";
+    public const string StockAdjustments = "STOCK_ADJ";
 }
 
 /// <summary>A general ledger (nominal) account. Fully user-customisable per business.</summary>

@@ -32,6 +32,12 @@ reporting — served from your own machine to an iOS app.
    (`EnsureCreated`). For production, switch to migrations:
    `dotnet ef migrations add Init && dotnet ef database update`.
 
+   > **Upgrading between versions:** `EnsureCreated` does not alter an
+   > existing database. After pulling a version that adds tables/columns
+   > (v1.1 banking/receipts, v1.2 inventory/production), either drop the
+   > dev database (`DROP DATABASE kestrelbooks;`) and let it recreate, or
+   > use EF migrations.
+
 5. Swagger UI is at `http://localhost:5000/swagger` — useful for testing the
    API without the app.
 

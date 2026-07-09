@@ -32,7 +32,9 @@ public static class CoaSeeder
         A("0050", "Assets Under Construction", AccountType.Asset, "Fixed Assets", tag: SystemTags.AssetsUnderConstruction);
 
         // Current assets
-        A("1001", "Stock", AccountType.Asset, "Current Assets");
+        A("1001", "Stock — Raw Materials", AccountType.Asset, "Current Assets", tag: SystemTags.StockRawMaterials);
+        A("1002", "Stock — Work in Progress", AccountType.Asset, "Current Assets", tag: SystemTags.StockWip);
+        A("1003", "Stock — Finished Goods", AccountType.Asset, "Current Assets", tag: SystemTags.StockFinishedGoods);
         A("1100", "Trade Debtors (Sales Ledger Control)", AccountType.Asset, "Current Assets", tag: SystemTags.TradeDebtors);
         A("1200", "Bank Current Account", AccountType.Asset, "Current Assets", bank: true, tag: SystemTags.DefaultBank);
         A("1210", "Bank Deposit Account", AccountType.Asset, "Current Assets", bank: true);
@@ -58,7 +60,11 @@ public static class CoaSeeder
 
         // Cost of sales
         A("5000", "Purchases — Goods for Resale", AccountType.Expense, "Cost of Sales");
+        A("5001", "Cost of Goods Sold", AccountType.Expense, "Cost of Sales", tag: SystemTags.CostOfGoodsSold);
         A("5100", "Carriage Inwards", AccountType.Expense, "Cost of Sales");
+        A("5200", "Direct Labour Absorbed", AccountType.Expense, "Cost of Sales", tag: SystemTags.LabourAbsorbed);
+        A("5300", "Production Overhead Absorbed", AccountType.Expense, "Cost of Sales", tag: SystemTags.OverheadAbsorbed);
+        A("5400", "Stock Adjustments & Write-offs", AccountType.Expense, "Cost of Sales", tag: SystemTags.StockAdjustments);
 
         // Overheads
         A("7000", "Gross Wages", AccountType.Expense, "Overheads");

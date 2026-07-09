@@ -24,6 +24,9 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<BankStatementImport> BankStatementImports => Set<BankStatementImport>();
     public DbSet<BankStatementLine> BankStatementLines => Set<BankStatementLine>();
     public DbSet<ReceiptScan> ReceiptScans => Set<ReceiptScan>();
+    public DbSet<StockMovement> StockMovements => Set<StockMovement>();
+    public DbSet<BillOfMaterial> BillOfMaterials => Set<BillOfMaterial>();
+    public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -72,5 +75,32 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<ReceiptScan>().Property(x => x.NetAmount).HasPrecision(18, 2);
         b.Entity<ReceiptScan>().Property(x => x.VatAmount).HasPrecision(18, 2);
         b.Entity<ReceiptScan>().Property(x => x.GrossAmount).HasPrecision(18, 2);
+
+        b.Entity<Item>().Property(x => x.QuantityOnHand).HasPrecision(18, 3);
+        b.Entity<Item>().Property(x => x.AvgUnitCost).HasPrecision(18, 4);
+        b.Entity<StockMovement>().Property(x => x.Quantity).HasPrecision(18, 3);
+        b.Entity<StockMovement>().Property(x => x.UnitCost).HasPrecision(18, 4);
+        b.Entity<StockMovement>().Property(x => x.Value).HasPrecision(18, 2);
+        b.Entity<StockMovement>().Property(x => x.QuantityAfter).HasPrecision(18, 3);
+        b.Entity<StockMovement>().HasIndex(x => new { x.BusinessId, x.ItemId, x.Date });
+        b.Entity<StockMovement>()
+            .HasOne(x => x.Item).WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<BillOfMaterial>().HasIndex(x => new { x.BusinessId, x.ParentItemId }).IsUnique();
+        b.Entity<BillOfMaterial>().Property(x => x.LabourCostPerUnit).HasPrecision(18, 4);
+        b.Entity<BillOfMaterial>().Property(x => x.OverheadCostPerUnit).HasPrecision(18, 4);
+        b.Entity<BillOfMaterial>()
+            .HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.BillOfMaterialId)
+            .OnDelete(DeleteBehavior.Cascade);
+        b.Entity<BomLine>().Property(x => x.QuantityPer).HasPrecision(18, 4);
+        b.Entity<BomLine>()
+            .HasOne(x => x.ComponentItem).WithMany().HasForeignKey(x => x.ComponentItemId)
+            .OnDelete(DeleteBehavior.Restrict);
+        b.Entity<ProductionOrder>().Property(x => x.QuantityPlanned).HasPrecision(18, 3);
+        b.Entity<ProductionOrder>().Property(x => x.QuantityCompleted).HasPrecision(18, 3);
+        b.Entity<ProductionOrder>().Property(x => x.MaterialCost).HasPrecision(18, 2);
+        b.Entity<ProductionOrder>().Property(x => x.LabourCost).HasPrecision(18, 2);
+        b.Entity<ProductionOrder>().Property(x => x.OverheadCost).HasPrecision(18, 2);
+        b.Entity<ProductionOrder>()
+            .HasOne(x => x.Item).WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
     }
 }

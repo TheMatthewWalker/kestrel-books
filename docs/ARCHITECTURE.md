@@ -100,3 +100,49 @@ a scan produces either:
 - **Paid on the spot:** an immediately posted money-out, with the VAT element
   journalled out of the expense account into Input VAT so the reclaim isn't
   lost — gross credits bank, net lands in the expense, VAT in Input VAT.
+
+## Manufacturing & perpetual inventory (v1.2)
+
+Stock tracking is **opt-in per item** (`Item.TrackStock`). Untracked items
+behave exactly as before (purchases expensed, no COGS), so the whole module
+is optional per business.
+
+### Valuation: weighted average cost (AVCO)
+
+Every quantity change is a `StockMovement` with a running balance. Receipts
+re-average (`new avg = (qty × avg + qty_in × cost) ÷ total qty`); issues go
+out at the current average. Issues that would take stock negative are
+blocked with a clear error. FIFO layering is on the roadmap.
+
+### Automatic postings
+
+| Event | Debit | Credit |
+|---|---|---|
+| Purchase of tracked item | Stock (RM or FG) — not expense | Trade Creditors (via invoice) |
+| Sale of tracked item | Cost of Goods Sold (at AVCO) | Stock — same journal as the revenue entry |
+| Materials issued to works order | Stock — WIP | Stock — Raw Materials |
+| Order completion (absorption) | Stock — WIP | Direct Labour Absorbed; Production Overhead Absorbed |
+| Order completion (transfer) | Stock — Finished Goods | Stock — WIP |
+| Stock adjustment (up / write-off) | Stock / Adjustments | Adjustments / Stock |
+
+### Works orders
+
+A `BillOfMaterial` defines components per unit plus per-unit labour and
+overhead absorption rates. The order lifecycle is Draft → issue materials
+(components consumed at AVCO into WIP) → complete (labour/overhead absorbed,
+full order cost transferred to finished goods, FG re-averages at order cost ÷
+quantity). Selling the finished item then releases material + labour +
+overhead through COGS.
+
+*AAT tie-in:* this is the manufacturing account — direct materials, direct
+labour and production overheads accumulating through WIP into finished goods
+and out through cost of sales — plus the AVCO inventory valuation method from
+your Level 3 units, running live rather than as a period-end calculation. The
+absorbed labour/overhead credits sitting against actual wages/overheads in
+the P&L are the seeds of over/under-absorption analysis.
+
+### Pre-v1.2 businesses
+
+`POST /inventory/enable` (called automatically when the Inventory screen
+opens) idempotently adds the tagged accounts (RM/WIP/FG stock, COGS,
+absorption, adjustments) to charts seeded before this version.
