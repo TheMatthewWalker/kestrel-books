@@ -92,12 +92,12 @@ Mostly elapsed time and paperwork rather than code; long lead times, so start ea
 | L.1 | ICO registration (~£40/yr); privacy policy; data processing terms; retention/deletion policy; user data export | 1–2 weeks effort | Deletion/export need code hooks too |
 | L.2 | Terms of service + acceptable use (template + review) | 1 week | Budget ~£500–1,500 if you get a solicitor to review |
 | L.3 | HMRC **production credentials**: fraud-header compliance evidence, terms of use, software listing | 4–12 weeks **elapsed** | The long pole — begin the moment sandbox is solid |
-| L.4 | **Agent Services Account flow** if targeting accountants: agent-client authorisation instead of client Gateway logins | 2–3 weeks code | Structural; decide your market first (see Gates) |
+| L.4 | **Agent Services Account flow** (mandatory — practice-first per Gate B): agent-client authorisation instead of client Gateway logins | 2–3 weeks code | Client-login flow retained as fallback |
 | L.5 | Business structure: Ltd company, professional indemnity + cyber insurance | 1 week | Software-only avoids AAT licensing/AML supervision — keep marketing on the software side of that line |
 
 ---
 
-## Phase 4 — Accounting table stakes (8–10 weeks)
+## Phase 4 — Accounting table stakes (9–11 weeks)
 
 What a practising bookkeeper assumes exists. Ordered by how often its absence
 kills a sale.
@@ -112,6 +112,7 @@ kills a sale.
 | 4.6 | **Invoice PDFs + emailing** (templates, logo, bank details, remittance) | 1.5 weeks | The invoice *is* the product for many users |
 | 4.7 | Document attachments on journals/invoices (extend receipt storage) | 3–4 evenings | |
 | 4.8 | Recurring invoices (Hangfire — familiar from your CMMS stack) | 3–4 evenings | |
+| 4.9 | **Practice dashboard**: per-client VAT/deadline list from HMRC obligations, task ticklist, working-paper notes | 1 week | Practice-first (Gate B) |
 
 ---
 
@@ -147,10 +148,20 @@ tests extended to cover it).
 **Gate A (after Phase 0):** did the E2E cycle feel solid? If foundational cracks
 appeared, fix architecture before writing tests against it.
 
-**Gate B (before Phase L.4):** pick the market. *Small manufacturers direct* →
-skip agent flow, lead with works orders/AVCO/job costing — the genuinely
-underserved niche. *Bookkeeping practices* → agent flow is mandatory and the
-web app moves ahead of Phase 4 extras.
+**Gate B — RESOLVED (Jul 2026):** market is **practice-first**. Primary user is
+a practising accountant (initially the founder's own practice) managing many
+client businesses; the app must "work for a practising accountant" end to end.
+Consequences now baked into this plan:
+- **HMRC Agent Services Account flow (L.4) is mandatory**, not optional — a
+  practice files for clients under agent-client authorisations, not client
+  Gateway logins. Client-login flow stays as a fallback for self-serve users.
+- The **web app (Phase 5) rises in priority** — practice work happens at a desk.
+- Practice features join the table stakes: client task/deadline list (VAT and
+  accounts due dates), per-client working-paper notes, engagement-friendly
+  reports.
+- **Small manufacturing businesses are a longer-term goal**: the AVCO/works
+  order module is maintained but not extended until the practice core is solid.
+  When targeted, lead with job costing for micro-fabricators.
 
 **Gate C (before Phase 6):** will 3 real people commit to using it for a month?
 If not, the honest pivot is portfolio asset — which, for Finance & Systems
