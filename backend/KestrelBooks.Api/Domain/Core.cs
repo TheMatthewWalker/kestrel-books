@@ -6,6 +6,9 @@ namespace KestrelBooks.Api.Domain;
 public class AppUser : IdentityUser<Guid>
 {
     public string DisplayName { get; set; } = "";
+    /// <summary>RFC 6238 TOTP secret, encrypted at rest with the Data Protection API.
+    /// MFA is enabled when Identity's TwoFactorEnabled is true and this is set.</summary>
+    public string? TotpSecretProtected { get; set; }
     public List<UserBusinessAccess> BusinessAccess { get; set; } = new();
 }
 
@@ -22,7 +25,26 @@ public class Business
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
-public enum BusinessRole { Owner = 0, Bookkeeper = 1, ReadOnly = 2 }
+/// <summary>
+/// Per-business roles. Enum values are persisted — never renumber; Accountant
+/// was appended in v1.4. Authority is by rank, not numeric value:
+///   Owner (3): everything, incl. user management, HMRC connection, settings
+///   Accountant (2): all bookkeeping + HMRC submissions
+///   Bookkeeper (1): all bookkeeping; no HMRC submissions
+///   ReadOnly (0): view only
+/// </summary>
+public enum BusinessRole { Owner = 0, Bookkeeper = 1, ReadOnly = 2, Accountant = 3 }
+
+public static class BusinessRoles
+{
+    public static int Rank(BusinessRole r) => r switch
+    {
+        BusinessRole.Owner => 3,
+        BusinessRole.Accountant => 2,
+        BusinessRole.Bookkeeper => 1,
+        _ => 0
+    };
+}
 
 /// <summary>Grants a user access to a client business (many-to-many).</summary>
 public class UserBusinessAccess

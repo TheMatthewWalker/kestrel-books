@@ -32,7 +32,7 @@ public class AccountsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid businessId, AccountRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         if (await _db.Accounts.AnyAsync(a => a.BusinessId == businessId && a.Code == req.Code))
             return BadRequest(new { error = $"Account code {req.Code} already exists." });
         var acc = new Account
@@ -48,7 +48,7 @@ public class AccountsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid businessId, Guid id, AccountRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.BusinessId == businessId);
         if (acc is null) return NotFound();
         acc.Code = req.Code; acc.Name = req.Name; acc.Type = req.Type;
@@ -60,7 +60,7 @@ public class AccountsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Archive(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var acc = await _db.Accounts.FirstOrDefaultAsync(a => a.Id == id && a.BusinessId == businessId);
         if (acc is null) return NotFound();
         if (acc.SystemTag != null)

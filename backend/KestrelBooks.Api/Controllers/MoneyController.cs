@@ -35,7 +35,7 @@ public class MoneyController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid businessId, MoneyRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var tx = new MoneyTransaction { Id = Guid.NewGuid(), BusinessId = businessId };
         Apply(tx, req);
         _db.MoneyTransactions.Add(tx);
@@ -46,7 +46,7 @@ public class MoneyController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid businessId, Guid id, MoneyRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var tx = await _db.MoneyTransactions.FirstOrDefaultAsync(t => t.Id == id && t.BusinessId == businessId);
         if (tx is null) return NotFound();
         if (tx.Status != DocumentStatus.Draft)
@@ -59,7 +59,7 @@ public class MoneyController : ControllerBase
     [HttpPost("{id:guid}/post")]
     public async Task<IActionResult> Post(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _docs.PostMoneyTransactionAsync(businessId, id, AccessService.UserId(User));
         return Ok(new { journalId = journal.Id, journalNumber = journal.Number });
     }

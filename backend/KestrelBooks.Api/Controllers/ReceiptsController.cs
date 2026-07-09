@@ -44,7 +44,7 @@ public class ReceiptsController : ControllerBase
     [RequestSizeLimit(20_000_000)]
     public async Task<IActionResult> Upload(Guid businessId, IFormFile file)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         if (file is null || file.Length == 0)
             return BadRequest(new { error = "No image received." });
 
@@ -94,7 +94,7 @@ public class ReceiptsController : ControllerBase
     [HttpPost("{id:guid}/confirm")]
     public async Task<IActionResult> Confirm(Guid businessId, Guid id, ConfirmScanRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var scan = await _db.ReceiptScans.FirstOrDefaultAsync(r => r.Id == id && r.BusinessId == businessId);
         if (scan is null) return NotFound();
         if (scan.Status == ScanStatus.Confirmed)

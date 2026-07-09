@@ -50,7 +50,7 @@ public class InvoicesController : ControllerBase
     [HttpPost("sales-invoices")]
     public async Task<IActionResult> SalesCreate(Guid businessId, InvoiceRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var inv = new SalesInvoice { Id = Guid.NewGuid(), BusinessId = businessId, CustomerId = req.ContactId };
         ApplySales(inv, req);
         _db.SalesInvoices.Add(inv);
@@ -61,7 +61,7 @@ public class InvoicesController : ControllerBase
     [HttpPut("sales-invoices/{id:guid}")]
     public async Task<IActionResult> SalesUpdate(Guid businessId, Guid id, InvoiceRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var inv = await _db.SalesInvoices.Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == id && i.BusinessId == businessId);
         if (inv is null) return NotFound();
@@ -77,7 +77,7 @@ public class InvoicesController : ControllerBase
     [HttpPost("sales-invoices/{id:guid}/post")]
     public async Task<IActionResult> SalesPost(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _docs.PostSalesInvoiceAsync(businessId, id, AccessService.UserId(User));
         return Ok(new { journalId = journal.Id, journalNumber = journal.Number });
     }
@@ -107,7 +107,7 @@ public class InvoicesController : ControllerBase
     [HttpPost("purchase-invoices")]
     public async Task<IActionResult> PurchaseCreate(Guid businessId, InvoiceRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var inv = new PurchaseInvoice { Id = Guid.NewGuid(), BusinessId = businessId, VendorId = req.ContactId };
         ApplyPurchase(inv, req);
         _db.PurchaseInvoices.Add(inv);
@@ -118,7 +118,7 @@ public class InvoicesController : ControllerBase
     [HttpPut("purchase-invoices/{id:guid}")]
     public async Task<IActionResult> PurchaseUpdate(Guid businessId, Guid id, InvoiceRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var inv = await _db.PurchaseInvoices.Include(i => i.Lines)
             .FirstOrDefaultAsync(i => i.Id == id && i.BusinessId == businessId);
         if (inv is null) return NotFound();
@@ -134,7 +134,7 @@ public class InvoicesController : ControllerBase
     [HttpPost("purchase-invoices/{id:guid}/post")]
     public async Task<IActionResult> PurchasePost(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _docs.PostPurchaseInvoiceAsync(businessId, id, AccessService.UserId(User));
         return Ok(new { journalId = journal.Id, journalNumber = journal.Number });
     }

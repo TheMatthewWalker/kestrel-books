@@ -59,7 +59,7 @@ public class JournalsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateDraft(Guid businessId, JournalRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var entry = await _posting.CreateDraftAsync(businessId, AccessService.UserId(User),
             req.Date, req.Reference, req.Narrative, SourceType.Manual, null,
             req.Lines.Select(l => new DraftLine(l.AccountId, l.Debit, l.Credit, l.Description)));
@@ -69,7 +69,7 @@ public class JournalsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> UpdateDraft(Guid businessId, Guid id, JournalRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var entry = await _db.Journals.Include(j => j.Lines)
             .FirstOrDefaultAsync(j => j.Id == id && j.BusinessId == businessId);
         if (entry is null) return NotFound();
@@ -91,7 +91,7 @@ public class JournalsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> DeleteDraft(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var entry = await _db.Journals.FirstOrDefaultAsync(j => j.Id == id && j.BusinessId == businessId);
         if (entry is null) return NotFound();
         if (entry.Status != JournalStatus.Draft)
@@ -104,7 +104,7 @@ public class JournalsController : ControllerBase
     [HttpPost("{id:guid}/post")]
     public async Task<IActionResult> Post(Guid businessId, Guid id)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var entry = await _posting.PostAsync(businessId, id, AccessService.UserId(User));
         return Ok(new { entry.Id, entry.Number });
     }
@@ -112,7 +112,7 @@ public class JournalsController : ControllerBase
     [HttpPost("{id:guid}/reverse")]
     public async Task<IActionResult> Reverse(Guid businessId, Guid id, [FromQuery] DateOnly? date)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var reversal = await _posting.ReverseAsync(businessId, id, AccessService.UserId(User), date);
         return Ok(new { reversal.Id, reversal.Number });
     }

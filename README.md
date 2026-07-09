@@ -16,7 +16,10 @@ reporting — served from your own machine to an iOS app.
    and [PostgreSQL 15+](https://www.postgresql.org/download/).
 2. Create the database role/password to match `backend/KestrelBooks.Api/appsettings.json`
    (default `postgres`/`postgres`), or edit the connection string.
-3. **Change `Jwt:Key`** in `appsettings.json` to a long random secret.
+3. **Change `Jwt:Key`** to a long random secret. In production, supply secrets
+   as environment variables instead of editing the file — the config keys map
+   as `Jwt__Key`, `Smtp__Password`, `Hmrc__ClientSecret`, `Anthropic__ApiKey`,
+   `ConnectionStrings__Default`. See docs/SECURITY.md for the security model.
 4. Run it:
 
    ```bash

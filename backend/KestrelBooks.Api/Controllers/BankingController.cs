@@ -28,7 +28,7 @@ public class BankingController : ControllerBase
     [RequestSizeLimit(10_000_000)]
     public async Task<IActionResult> Import(Guid businessId, [FromQuery] Guid bankAccountId, IFormFile file)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         if (file is null || file.Length == 0)
             return BadRequest(new { error = "No file received." });
         using var reader = new StreamReader(file.OpenReadStream());
@@ -64,7 +64,7 @@ public class BankingController : ControllerBase
     [HttpPost("lines/{lineId:guid}/match/{journalLineId:guid}")]
     public async Task<IActionResult> Match(Guid businessId, Guid lineId, Guid journalLineId)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         await _bank.MatchAsync(businessId, lineId, journalLineId);
         return Ok(new { matched = true });
     }
@@ -72,7 +72,7 @@ public class BankingController : ControllerBase
     [HttpPost("lines/{lineId:guid}/exclude")]
     public async Task<IActionResult> Exclude(Guid businessId, Guid lineId)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var line = await _db.BankStatementLines
             .FirstOrDefaultAsync(l => l.Id == lineId && l.BusinessId == businessId);
         if (line is null) return NotFound();
@@ -88,7 +88,7 @@ public class BankingController : ControllerBase
     [HttpPost("lines/{lineId:guid}/create-transaction")]
     public async Task<IActionResult> CreateTransaction(Guid businessId, Guid lineId, CreateFromLineRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var line = await _db.BankStatementLines
             .FirstOrDefaultAsync(l => l.Id == lineId && l.BusinessId == businessId);
         if (line is null) return NotFound();

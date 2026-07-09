@@ -1,13 +1,26 @@
 using KestrelBooks.Api.Domain;
+using KestrelBooks.Api.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace KestrelBooks.Api.Data;
 
+/// <summary>
+/// Multi-tenant DbContext. Every business-scoped entity carries a global query
+/// filter bound to the current TenantProvider (set per request by
+/// TenantMiddleware after membership verification). A query that "forgets" to
+/// filter now fails closed — it returns nothing rather than another tenant's
+/// data. Filters read TenantId at query time (not construction time), because
+/// the middleware sets the tenant after this scoped context is created.
+/// </summary>
 public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+    private readonly TenantProvider _tenant;
+    private Guid? TenantId => _tenant.BusinessId;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, TenantProvider tenant)
+        : base(options) => _tenant = tenant;
 
     public DbSet<Business> Businesses => Set<Business>();
     public DbSet<UserBusinessAccess> UserBusinessAccess => Set<UserBusinessAccess>();
@@ -29,6 +42,9 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<ProductionOrder> ProductionOrders => Set<ProductionOrder>();
     public DbSet<HmrcConnection> HmrcConnections => Set<HmrcConnection>();
     public DbSet<VatSubmission> VatSubmissions => Set<VatSubmission>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<OneTimeCode> OneTimeCodes => Set<OneTimeCode>();
+    public DbSet<AuthEvent> AuthEvents => Set<AuthEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -106,5 +122,29 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             .HasOne(x => x.Item).WithMany().HasForeignKey(x => x.ItemId).OnDelete(DeleteBehavior.Restrict);
 
         b.Entity<HmrcConnection>().HasIndex(x => x.BusinessId).IsUnique();
+        b.Entity<RefreshToken>().HasIndex(x => x.TokenHash).IsUnique();
+        b.Entity<RefreshToken>().HasIndex(x => x.UserId);
+        b.Entity<OneTimeCode>().HasIndex(x => new { x.UserId, x.Purpose });
+        b.Entity<AuthEvent>().HasIndex(x => x.AtUtc);
+
+        // ---- Tenant isolation: global query filters ----
+        b.Entity<Account>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<JournalEntry>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<JournalLine>().HasQueryFilter(e => TenantId == null || e.JournalEntry.BusinessId == TenantId);
+        b.Entity<Customer>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<Vendor>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<Item>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<SalesInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<PurchaseInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<MoneyTransaction>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<FixedAsset>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<BankStatementImport>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<BankStatementLine>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<ReceiptScan>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<StockMovement>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<BillOfMaterial>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<ProductionOrder>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<HmrcConnection>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<VatSubmission>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
     }
 }

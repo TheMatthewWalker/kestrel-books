@@ -31,7 +31,7 @@ public class ItemsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid businessId, ItemRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var item = new Item { Id = Guid.NewGuid(), BusinessId = businessId };
         Apply(item, req);
         _db.Items.Add(item);
@@ -42,7 +42,7 @@ public class ItemsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid businessId, Guid id, ItemRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var item = await _db.Items.FirstOrDefaultAsync(i => i.Id == id && i.BusinessId == businessId);
         if (item is null) return NotFound();
         Apply(item, req);

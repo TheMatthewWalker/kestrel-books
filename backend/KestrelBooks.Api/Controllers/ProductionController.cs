@@ -47,7 +47,7 @@ public class ProductionController : ControllerBase
     [HttpPut("boms/{parentItemId:guid}")]
     public async Task<IActionResult> SetBom(Guid businessId, Guid parentItemId, BomRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         if (req.Lines.Any(l => l.ComponentItemId == parentItemId))
             return BadRequest(new { error = "An item cannot be a component of itself." });
         var bom = await _db.BillOfMaterials.Include(b => b.Lines)
@@ -92,7 +92,7 @@ public class ProductionController : ControllerBase
     [HttpPost("orders")]
     public async Task<IActionResult> Create(Guid businessId, CreateOrderRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var order = await _production.CreateAsync(businessId, req.ItemId, req.Quantity, req.Notes);
         return Ok(new { order.Id, order.Number });
     }
@@ -100,7 +100,7 @@ public class ProductionController : ControllerBase
     [HttpPost("orders/{id:guid}/issue-materials")]
     public async Task<IActionResult> Issue(Guid businessId, Guid id, [FromQuery] DateOnly? date)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _production.IssueMaterialsAsync(businessId, id,
             date ?? DateOnly.FromDateTime(DateTime.Today), AccessService.UserId(User));
         return Ok(new { journalNumber = journal.Number });
@@ -109,7 +109,7 @@ public class ProductionController : ControllerBase
     [HttpPost("orders/{id:guid}/complete")]
     public async Task<IActionResult> Complete(Guid businessId, Guid id, CompleteOrderRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _production.CompleteAsync(businessId, id, req.Date,
             req.QuantityCompleted, AccessService.UserId(User));
         return Ok(new { journalNumber = journal.Number });

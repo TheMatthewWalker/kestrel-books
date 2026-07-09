@@ -5,6 +5,7 @@ using KestrelBooks.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,12 +15,16 @@ builder.Services.AddDbContext<AppDbContext>(o =>
 
 builder.Services.AddIdentityCore<AppUser>(o =>
 {
-    o.Password.RequiredLength = 8;
+    o.Password.RequiredLength = 10;
     o.Password.RequireNonAlphanumeric = false;
     o.User.RequireUniqueEmail = true;
+    o.Lockout.AllowedForNewUsers = true;
+    o.Lockout.MaxFailedAccessAttempts = 5;
+    o.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
 })
 .AddRoles<IdentityRole<Guid>>()
-.AddEntityFrameworkStores<AppDbContext>();
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -50,7 +55,32 @@ builder.Services.AddScoped<StockService>();
 builder.Services.AddScoped<ProductionService>();
 builder.Services.AddScoped<HmrcService>();
 builder.Services.AddScoped<VatReturnService>();
-builder.Services.AddDataProtection();
+// Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and
+// MFA/state payloads survive restarts. Move to a key vault/blob in production.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        Path.Combine(builder.Environment.ContentRootPath, "Storage", "dp-keys")));
+builder.Services.AddScoped<TenantProvider>();
+builder.Services.AddScoped<OneTimeCodeService>();
+if (!string.IsNullOrEmpty(builder.Configuration["Smtp:Host"]))
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+else
+    builder.Services.AddScoped<IEmailSender, LogEmailSender>();
+
+// Rate limiting: tight window on auth (credential guessing), broad global cap.
+builder.Services.AddRateLimiter(o =>
+{
+    o.RejectionStatusCode = 429;
+    o.AddPolicy("auth", ctx => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+        ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) }));
+    o.GlobalLimiter = System.Threading.RateLimiting.PartitionedRateLimiter.Create<HttpContext, string>(
+        ctx => System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            ctx.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) }));
+});
 builder.Services.AddSingleton<ReceiptStorageService>();
 builder.Services.AddHttpClient();
 if (!string.IsNullOrEmpty(builder.Configuration["Anthropic:ApiKey"]))
@@ -77,6 +107,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors("mobile");
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -88,6 +119,8 @@ app.Use(async (ctx, next) =>
     catch (KeyNotFoundException ex) { ctx.Response.StatusCode = 404; await ctx.Response.WriteAsJsonAsync(new { error = ex.Message }); }
     catch (InvalidOperationException ex) { ctx.Response.StatusCode = 400; await ctx.Response.WriteAsJsonAsync(new { error = ex.Message }); }
 });
+
+app.UseMiddleware<TenantMiddleware>();
 
 app.MapControllers();
 app.Run();

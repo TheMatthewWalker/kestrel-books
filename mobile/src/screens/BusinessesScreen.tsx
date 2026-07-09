@@ -44,6 +44,7 @@ export default function BusinessesScreen({ navigation }: any) {
       ) : (
         <Button title="Add client business" onPress={() => setAdding(true)} />
       )}
+      <Button kind="ghost" title="Account security (MFA)" onPress={() => navigation.navigate('Security')} />
       <Button kind="ghost" title="Sign out" onPress={signOut} />
     </Screen>
   );

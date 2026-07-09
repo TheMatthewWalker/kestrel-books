@@ -46,7 +46,7 @@ public class MtdController : ControllerBase
     public async Task<IActionResult> AuthoriseUrl(Guid businessId,
         [FromQuery] string scope = "read:vat write:vat read:self-assessment write:self-assessment")
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Owner);
         var url = _hmrc.BuildAuthoriseUrl(businessId, AccessService.UserId(User), scope);
         return Ok(new { url });
     }
@@ -101,7 +101,7 @@ public class MtdController : ControllerBase
     [HttpPut("businesses/{businessId:guid}/details")]
     public async Task<IActionResult> SetDetails(Guid businessId, ConnectionDetailsRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Owner);
         var conn = await _db.HmrcConnections.FirstOrDefaultAsync(c => c.BusinessId == businessId);
         if (conn is null) return BadRequest(new { error = "Connect to HMRC first." });
         conn.Vrn = req.Vrn; conn.Nino = req.Nino;
@@ -113,7 +113,7 @@ public class MtdController : ControllerBase
     [HttpPut("businesses/{businessId:guid}/device")]
     public async Task<IActionResult> RegisterDevice(Guid businessId, DeviceInfo device)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Owner);
         var conn = await _db.HmrcConnections.FirstOrDefaultAsync(c => c.BusinessId == businessId);
         if (conn is null) return BadRequest(new { error = "Connect to HMRC first." });
         conn.DeviceInfoJson = JsonSerializer.Serialize(device);
@@ -125,7 +125,7 @@ public class MtdController : ControllerBase
     [HttpGet("businesses/{businessId:guid}/validate-fraud-headers")]
     public async Task<IActionResult> ValidateFraudHeaders(Guid businessId)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Owner);
         var (status, body) = await _hmrc.SendAsync(businessId, HttpMethod.Get,
             "/test/fraud-prevention-headers/validate", null, ClientIp());
         return StatusCode(status == 0 ? 500 : 200, body);
@@ -152,7 +152,7 @@ public class MtdController : ControllerBase
     [HttpPost("businesses/{businessId:guid}/vat/submit")]
     public async Task<IActionResult> VatSubmit(Guid businessId, SubmitVatRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Accountant);
         var submission = await _vat.SubmitAsync(businessId, req.PeriodKey, req.From, req.To,
             req.Boxes, req.Finalised, AccessService.UserId(User), ClientIp());
         return Ok(new { submission.Id, submission.FormBundleNumber, submission.ProcessingDate });
@@ -200,7 +200,7 @@ public class MtdController : ControllerBase
     [HttpPost("businesses/{businessId:guid}/itsa/quarterly")]
     public async Task<IActionResult> ItsaQuarterly(Guid businessId, ItsaQuarterRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Accountant);
         var conn = await _hmrc.RequireConnectionAsync(businessId);
         if (string.IsNullOrEmpty(conn.Nino)) return BadRequest(new { error = "Set the NINO first." });
 

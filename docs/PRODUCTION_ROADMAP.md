@@ -47,7 +47,7 @@ foundation for every phase after it.
 
 ---
 
-## Phase 2 — Security & tenancy (4–6 weeks)
+## Phase 2 — Security & tenancy (4–6 weeks) — **BUILT in v1.4, pending compile/run verification (Phase 0 still outstanding)**
 
 You will be holding other people's books. One missed `BusinessId` filter is a
 reportable data breach.

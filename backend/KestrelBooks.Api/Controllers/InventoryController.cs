@@ -26,7 +26,7 @@ public class InventoryController : ControllerBase
     [HttpPost("enable")]
     public async Task<IActionResult> Enable(Guid businessId)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         await _stock.EnsureManufacturingAccountsAsync(businessId);
         return Ok(new { enabled = true });
     }
@@ -65,7 +65,7 @@ public class InventoryController : ControllerBase
     [HttpPost("adjust")]
     public async Task<IActionResult> Adjust(Guid businessId, AdjustStockRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _stock.AdjustAsync(businessId, req.ItemId, req.Date,
             req.Quantity, req.UnitCost, req.Reason, AccessService.UserId(User));
         return Ok(new { journalNumber = journal.Number });

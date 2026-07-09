@@ -31,7 +31,7 @@ public class ContactsController : ControllerBase
     [HttpPost("customers")]
     public async Task<IActionResult> CreateCustomer(Guid businessId, ContactRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var c = new Customer { Id = Guid.NewGuid(), BusinessId = businessId };
         Apply(c, req);
         _db.Customers.Add(c);
@@ -42,7 +42,7 @@ public class ContactsController : ControllerBase
     [HttpPut("customers/{id:guid}")]
     public async Task<IActionResult> UpdateCustomer(Guid businessId, Guid id, ContactRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var c = await _db.Customers.FirstOrDefaultAsync(x => x.Id == id && x.BusinessId == businessId);
         if (c is null) return NotFound();
         Apply(c, req);
@@ -61,7 +61,7 @@ public class ContactsController : ControllerBase
     [HttpPost("vendors")]
     public async Task<IActionResult> CreateVendor(Guid businessId, ContactRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var v = new Vendor { Id = Guid.NewGuid(), BusinessId = businessId };
         Apply(v, req);
         _db.Vendors.Add(v);
@@ -72,7 +72,7 @@ public class ContactsController : ControllerBase
     [HttpPut("vendors/{id:guid}")]
     public async Task<IActionResult> UpdateVendor(Guid businessId, Guid id, ContactRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var v = await _db.Vendors.FirstOrDefaultAsync(x => x.Id == id && x.BusinessId == businessId);
         if (v is null) return NotFound();
         Apply(v, req);

@@ -44,7 +44,7 @@ public class AssetsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(Guid businessId, AssetRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var asset = new FixedAsset { Id = Guid.NewGuid(), BusinessId = businessId };
         Apply(asset, req);
         _db.FixedAssets.Add(asset);
@@ -55,7 +55,7 @@ public class AssetsController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid businessId, Guid id, AssetRequest req)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var asset = await _db.FixedAssets.FirstOrDefaultAsync(a => a.Id == id && a.BusinessId == businessId);
         if (asset is null) return NotFound();
         if (asset.DepreciatedThrough != null && (req.Cost != asset.Cost || req.Method != asset.Method))
@@ -69,7 +69,7 @@ public class AssetsController : ControllerBase
     [HttpPost("depreciation-run")]
     public async Task<IActionResult> RunDepreciation(Guid businessId, [FromQuery] int year, [FromQuery] int month)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _depreciation.RunMonthAsync(businessId, year, month, AccessService.UserId(User));
         return journal is null
             ? Ok(new { message = "Nothing to depreciate for that month." })
@@ -80,7 +80,7 @@ public class AssetsController : ControllerBase
     [HttpPost("{id:guid}/capitalise")]
     public async Task<IActionResult> Capitalise(Guid businessId, Guid id, [FromQuery] DateOnly date)
     {
-        await _access.EnsureAccessAsync(User, businessId);
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
         var journal = await _depreciation.CapitaliseAsync(businessId, id, date, AccessService.UserId(User));
         return Ok(new { journalId = journal.Id, journalNumber = journal.Number });
     }

@@ -29,12 +29,14 @@ public class HmrcService
     private readonly IHttpClientFactory _http;
     private readonly IConfiguration _config;
     private readonly IDataProtector _protector;
+    private readonly IDataProtector _tokenProtector;
 
     public HmrcService(AppDbContext db, IHttpClientFactory http, IConfiguration config,
         IDataProtectionProvider dataProtection)
     {
         _db = db; _http = http; _config = config;
         _protector = dataProtection.CreateProtector("hmrc-oauth-state");
+        _tokenProtector = dataProtection.CreateProtector("hmrc-tokens");
     }
 
     private string BaseUrl => _config["Hmrc:BaseUrl"]!.TrimEnd('/');
@@ -96,7 +98,7 @@ public class HmrcService
             var payload = await TokenRequestAsync(new Dictionary<string, string>
             {
                 ["grant_type"] = "refresh_token",
-                ["refresh_token"] = conn.RefreshToken,
+                ["refresh_token"] = _tokenProtector.Unprotect(conn.RefreshToken),
             });
             ApplyTokens(conn, payload); // HMRC rotates the refresh token on every use
             await _db.SaveChangesAsync();
@@ -116,10 +118,11 @@ public class HmrcService
         return JsonDocument.Parse(body).RootElement.Clone();
     }
 
-    private static void ApplyTokens(HmrcConnection conn, JsonElement payload)
+    /// <summary>Tokens are encrypted at rest with the Data Protection API.</summary>
+    private void ApplyTokens(HmrcConnection conn, JsonElement payload)
     {
-        conn.AccessToken = payload.GetProperty("access_token").GetString()!;
-        conn.RefreshToken = payload.GetProperty("refresh_token").GetString()!;
+        conn.AccessToken = _tokenProtector.Protect(payload.GetProperty("access_token").GetString()!);
+        conn.RefreshToken = _tokenProtector.Protect(payload.GetProperty("refresh_token").GetString()!);
         conn.Scope = payload.TryGetProperty("scope", out var s) ? s.GetString() ?? "" : conn.Scope;
         var expiresIn = payload.GetProperty("expires_in").GetInt32();
         conn.ExpiresAtUtc = DateTime.UtcNow.AddSeconds(expiresIn);
@@ -167,7 +170,7 @@ public class HmrcService
         var conn = await RequireConnectionAsync(businessId);
         var client = _http.CreateClient();
         var req = new HttpRequestMessage(method, $"{BaseUrl}{path}");
-        req.Headers.Add("Authorization", $"Bearer {conn.AccessToken}");
+        req.Headers.Add("Authorization", $"Bearer {_tokenProtector.Unprotect(conn.AccessToken)}");
         req.Headers.Add("Accept", "application/vnd.hmrc.1.0+json");
         foreach (var h in FraudPreventionHeaders(conn, clientPublicIp))
             req.Headers.TryAddWithoutValidation(h.Key, h.Value);
