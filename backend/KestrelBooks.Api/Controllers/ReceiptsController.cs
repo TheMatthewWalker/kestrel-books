@@ -22,11 +22,11 @@ public class ReceiptsController : ControllerBase
     private readonly AppDbContext _db;
     private readonly AccessService _access;
     private readonly IReceiptExtractor _extractor;
-    private readonly ReceiptStorageService _storage;
+    private readonly IReceiptStorage _storage;
     private readonly DocumentPostingService _docs;
     private readonly PostingService _posting;
     public ReceiptsController(AppDbContext db, AccessService access, IReceiptExtractor extractor,
-        ReceiptStorageService storage, DocumentPostingService docs, PostingService posting)
+        IReceiptStorage storage, DocumentPostingService docs, PostingService posting)
     {
         _db = db; _access = access; _extractor = extractor; _storage = storage; _docs = docs; _posting = posting;
     }

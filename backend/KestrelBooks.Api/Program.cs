@@ -7,9 +7,37 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Structured logging: JSON-friendly console output the platform (Docker,
+// systemd, App Service) can collect; request logging added to the pipeline below.
+builder.Host.UseSerilog((ctx, cfg) => cfg
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", Serilog.Events.LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .WriteTo.Console());
+
+// Error tracking: enabled only when a DSN is configured (free tier is fine).
+if (!string.IsNullOrEmpty(builder.Configuration["Sentry:Dsn"]))
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = builder.Configuration["Sentry:Dsn"];
+        o.TracesSampleRate = 0.1;
+    });
+
+// Behind Caddy/nginx the client address arrives in X-Forwarded-* — needed for
+// correct per-IP rate limiting and the HMRC Gov-Client-Public-IP header.
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear(); // trust the reverse proxy on the private compose network
+    o.KnownProxies.Clear();
+});
 
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
@@ -82,12 +110,18 @@ builder.Services.AddRateLimiter(o =>
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
             { PermitLimit = 300, Window = TimeSpan.FromMinutes(1) }));
 });
-builder.Services.AddSingleton<ReceiptStorageService>();
+if (!string.IsNullOrEmpty(builder.Configuration["S3:Bucket"]))
+    builder.Services.AddSingleton<IReceiptStorage, S3ReceiptStorage>();
+else
+    builder.Services.AddSingleton<IReceiptStorage, DiskReceiptStorage>();
 builder.Services.AddHttpClient();
 if (!string.IsNullOrEmpty(builder.Configuration["Anthropic:ApiKey"]))
     builder.Services.AddScoped<IReceiptExtractor, ClaudeReceiptExtractor>();
 else
     builder.Services.AddScoped<IReceiptExtractor, ManualReceiptExtractor>();
+
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<AppDbContext>("database");
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -96,6 +130,9 @@ builder.Services.AddCors(o => o.AddPolicy("mobile", p =>
     p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod()));
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
+app.UseSerilogRequestLogging();
 
 // Apply any pending EF Core migrations on startup (creates the database if absent).
 // Generate migrations with: dotnet ef migrations add <Name>   (see README).
@@ -120,6 +157,13 @@ app.Use(async (ctx, next) =>
     catch (KeyNotFoundException ex) { ctx.Response.StatusCode = 404; await ctx.Response.WriteAsJsonAsync(new { error = ex.Message }); }
     catch (InvalidOperationException ex) { ctx.Response.StatusCode = 400; await ctx.Response.WriteAsJsonAsync(new { error = ex.Message }); }
 });
+
+// Liveness: process is up. Readiness: process + database reachable.
+app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    Predicate = _ => false
+});
+app.MapHealthChecks("/health/ready");
 
 app.UseMiddleware<TenantMiddleware>();
 

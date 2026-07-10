@@ -66,7 +66,7 @@ reportable data breach.
 
 ---
 
-## Phase 3 — Real hosting & operations (3–4 weeks)
+## Phase 3 — Real hosting & operations (3–4 weeks) — **groundwork BUILT in v1.5** (Dockerfile, compose stacks, Caddy TLS/HSTS, Serilog, Sentry, health endpoints, S3 receipt storage, GHCR image pipeline, ops guide); remaining: pick host, deploy, managed PG + tested restore
 
 Off your PC and onto infrastructure you'd defend to a paying customer.
 

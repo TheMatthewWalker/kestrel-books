@@ -1,0 +1,31 @@
+# Local/dev stack: API + PostgreSQL. `docker compose up --build` from repo root.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: kestrelbooks
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: ./backend/KestrelBooks.Api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: "Host=db;Database=kestrelbooks;Username=postgres;Password=postgres"
+      Jwt__Key: "dev-only-key-change-me-32-characters-min"
+    ports:
+      - "5000:8080"
+    volumes:
+      - apistorage:/app/Storage
+
+volumes:
+  pgdata:
+  apistorage:
