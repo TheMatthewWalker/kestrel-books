@@ -143,6 +143,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<ReceiptScan>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<StockMovement>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<BillOfMaterial>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<BomLine>().HasQueryFilter(e => TenantId == null || e.ComponentItem.BusinessId == TenantId);
         b.Entity<ProductionOrder>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<HmrcConnection>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<VatSubmission>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
