@@ -74,7 +74,7 @@ public class TenantIsolationTests : IDisposable
     }
 
     [Fact]
-    public void AccessService_EnforcesRoleRank()
+    public async Task AccessService_EnforcesRoleRank()
     {
         var tenant = new TenantProvider();
         tenant.Set(_businessA, BusinessRole.Bookkeeper);
@@ -82,15 +82,15 @@ public class TenantIsolationTests : IDisposable
         var user = new System.Security.Claims.ClaimsPrincipal();
 
         // Bookkeeper can do bookkeeping…
-        access.EnsureAccessAsync(user, _businessA, BusinessRole.Bookkeeper).Wait();
+        await access.EnsureAccessAsync(user, _businessA, BusinessRole.Bookkeeper);
         // …but cannot submit to HMRC (Accountant) or manage users (Owner).
-        Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => access.EnsureAccessAsync(user, _businessA, BusinessRole.Accountant)).Wait();
-        Assert.ThrowsAsync<UnauthorizedAccessException>(
-            () => access.EnsureAccessAsync(user, _businessA, BusinessRole.Owner)).Wait();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => access.EnsureAccessAsync(user, _businessA, BusinessRole.Accountant));
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => access.EnsureAccessAsync(user, _businessA, BusinessRole.Owner));
         // Accountant outranks Bookkeeper despite a higher enum value (3 vs 1).
         tenant.Set(_businessA, BusinessRole.Accountant);
-        access.EnsureAccessAsync(user, _businessA, BusinessRole.Bookkeeper).Wait();
+        await access.EnsureAccessAsync(user, _businessA, BusinessRole.Bookkeeper);
     }
 
     public void Dispose() => _db.Dispose();
