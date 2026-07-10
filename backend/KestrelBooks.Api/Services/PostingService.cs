@@ -73,11 +73,10 @@ public class PostingService
         if (entry.Status != JournalStatus.Draft)
             throw new InvalidOperationException("Only draft journals can be posted.");
         Validate(entry);
-        entry.Number = await NextNumberAsync(businessId);
         entry.Status = JournalStatus.Posted;
         entry.PostedAtUtc = DateTime.UtcNow;
         entry.PostedBy = userId;
-        await _db.SaveChangesAsync();
+        await AssignNumberAndSaveAsync(entry);
         return entry;
     }
 
@@ -104,7 +103,6 @@ public class PostingService
             Status = JournalStatus.Posted,
             PostedAtUtc = DateTime.UtcNow,
             PostedBy = userId,
-            Number = await NextNumberAsync(businessId),
             Lines = original.Lines.Select(l => new JournalLine
             {
                 Id = Guid.NewGuid(),
@@ -116,13 +114,35 @@ public class PostingService
         };
         original.Status = JournalStatus.Reversed;
         _db.Journals.Add(reversal);
-        await _db.SaveChangesAsync();
+        await AssignNumberAndSaveAsync(reversal);
         return reversal;
     }
 
     public async Task<Account> RequireTaggedAccountAsync(Guid businessId, string tag) =>
         await _db.Accounts.FirstOrDefaultAsync(a => a.BusinessId == businessId && a.SystemTag == tag)
         ?? throw new InvalidOperationException($"No account tagged {tag} exists for this business.");
+
+    /// <summary>
+    /// Sequential numbering under concurrency: max+1 is racy, so the unique
+    /// filtered index on (BusinessId, Number) is the arbiter — on a collision
+    /// we take the next number and try again (bounded retries).
+    /// </summary>
+    private async Task AssignNumberAndSaveAsync(JournalEntry entry)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            entry.Number = await NextNumberAsync(entry.BusinessId);
+            try
+            {
+                await _db.SaveChangesAsync();
+                return;
+            }
+            catch (DbUpdateException) when (attempt < 5)
+            {
+                // Another poster claimed the number between our read and save.
+            }
+        }
+    }
 
     private async Task<int> NextNumberAsync(Guid businessId)
     {

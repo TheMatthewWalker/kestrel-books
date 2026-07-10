@@ -25,11 +25,13 @@ public class MoneyController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List(Guid businessId)
+    public async Task<IActionResult> List(Guid businessId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.MoneyTransactions.Where(t => t.BusinessId == businessId)
-            .OrderByDescending(t => t.Date).Take(200).ToListAsync());
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.MoneyTransactions.Where(t => t.BusinessId == businessId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query.OrderByDescending(t => t.Date).Skip(skip).Take(take).ToListAsync());
     }
 
     [HttpPost]

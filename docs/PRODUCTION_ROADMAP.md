@@ -97,6 +97,13 @@ Mostly elapsed time and paperwork rather than code; long lead times, so start ea
 
 ---
 
+## Phase 3.5 — Hardening (BUILT in v1.6)
+Journal-number race fixed (unique filtered index + bounded retry); one journal
+per source document enforced by the database (double-post → HTTP 409);
+pagination with X-Total-Count on all growing lists; Swagger Bearer auth;
+daily cleanup of dead refresh tokens/codes (audit events kept 2 years).
+Requires: `dotnet ef migrations add Hardening`.
+
 ## Phase 4 — Accounting table stakes (9–11 weeks)
 
 What a practising bookkeeper assumes exists. Ordered by how often its absence

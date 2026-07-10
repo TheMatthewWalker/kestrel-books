@@ -24,12 +24,15 @@ public class JournalsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List(Guid businessId)
+    public async Task<IActionResult> List(Guid businessId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.Journals.Where(j => j.BusinessId == businessId)
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.Journals.Where(j => j.BusinessId == businessId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query
             .OrderByDescending(j => j.Date).ThenByDescending(j => j.Number)
-            .Take(300)
+            .Skip(skip).Take(take)
             .Select(j => new { j.Id, j.Number, j.Date, j.Reference, j.Narrative, j.Status,
                                j.Source, j.ReversalOfId,
                                Total = j.Lines.Sum(l => l.Debit) })

@@ -32,11 +32,13 @@ public class ReceiptsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> List(Guid businessId)
+    public async Task<IActionResult> List(Guid businessId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.ReceiptScans.Where(r => r.BusinessId == businessId)
-            .OrderByDescending(r => r.UploadedAtUtc).Take(100).ToListAsync());
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.ReceiptScans.Where(r => r.BusinessId == businessId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query.OrderByDescending(r => r.UploadedAtUtc).Skip(skip).Take(take).ToListAsync());
     }
 
     /// <summary>Upload a receipt photo; stores the image and runs extraction.</summary>

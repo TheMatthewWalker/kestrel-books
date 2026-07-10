@@ -50,13 +50,16 @@ public class InventoryController : ControllerBase
 
     /// <summary>Movement history (item card) for one item.</summary>
     [HttpGet("movements/{itemId:guid}")]
-    public async Task<IActionResult> Movements(Guid businessId, Guid itemId)
+    public async Task<IActionResult> Movements(Guid businessId, Guid itemId,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.StockMovements
-            .Where(m => m.BusinessId == businessId && m.ItemId == itemId)
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.StockMovements.Where(m => m.BusinessId == businessId && m.ItemId == itemId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query
             .OrderByDescending(m => m.Date).ThenByDescending(m => m.CreatedAtUtc)
-            .Take(200)
+            .Skip(skip).Take(take)
             .Select(m => new { m.Id, m.Date, m.Type, m.Quantity, m.UnitCost, m.Value, m.QuantityAfter, m.Notes })
             .ToListAsync());
     }

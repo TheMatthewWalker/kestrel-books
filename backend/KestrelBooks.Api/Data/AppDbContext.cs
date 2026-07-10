@@ -55,7 +55,14 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<Account>().HasIndex(x => new { x.BusinessId, x.Code }).IsUnique();
         b.Entity<Account>().Property(x => x.Code).HasMaxLength(10);
 
-        b.Entity<JournalEntry>().HasIndex(x => new { x.BusinessId, x.Number });
+        // Posted journal numbers are unique per business (drafts sit at Number = 0).
+        // The filter excludes drafts; PostingService retries on collision.
+        b.Entity<JournalEntry>().HasIndex(x => new { x.BusinessId, x.Number })
+            .IsUnique().HasFilter("\"Number\" > 0");
+        // One journal per source document (sales/purchase invoice, receipt, payment):
+        // concurrent double-posts violate this index and surface as HTTP 409.
+        b.Entity<JournalEntry>().HasIndex(x => new { x.BusinessId, x.Source, x.SourceId })
+            .IsUnique().HasFilter("\"SourceId\" IS NOT NULL AND \"Source\" IN (1, 2, 3, 4)");
         b.Entity<JournalEntry>()
             .HasMany(x => x.Lines).WithOne(x => x.JournalEntry)
             .HasForeignKey(x => x.JournalEntryId).OnDelete(DeleteBehavior.Cascade);

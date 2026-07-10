@@ -28,11 +28,15 @@ public class InvoicesController : ControllerBase
     // ---- Sales ----
 
     [HttpGet("sales-invoices")]
-    public async Task<IActionResult> SalesList(Guid businessId)
+    public async Task<IActionResult> SalesList(Guid businessId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.SalesInvoices.Where(i => i.BusinessId == businessId)
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.SalesInvoices.Where(i => i.BusinessId == businessId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query
             .OrderByDescending(i => i.Date)
+            .Skip(skip).Take(take)
             .Select(i => new { i.Id, i.Number, i.Date, i.DueDate, Contact = i.Customer.Name,
                                i.NetTotal, i.VatTotal, i.GrossTotal, i.AmountPaid, i.Status })
             .ToListAsync());
@@ -85,11 +89,15 @@ public class InvoicesController : ControllerBase
     // ---- Purchases ----
 
     [HttpGet("purchase-invoices")]
-    public async Task<IActionResult> PurchaseList(Guid businessId)
+    public async Task<IActionResult> PurchaseList(Guid businessId, [FromQuery] int page = 1, [FromQuery] int pageSize = 100)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        return Ok(await _db.PurchaseInvoices.Where(i => i.BusinessId == businessId)
+        var (skip, take) = Paging.Normalise(ref page, ref pageSize);
+        var query = _db.PurchaseInvoices.Where(i => i.BusinessId == businessId);
+        Response.Headers["X-Total-Count"] = (await query.CountAsync()).ToString();
+        return Ok(await query
             .OrderByDescending(i => i.Date)
+            .Skip(skip).Take(take)
             .Select(i => new { i.Id, i.Number, i.Date, i.DueDate, Contact = i.Vendor.Name,
                                i.NetTotal, i.VatTotal, i.GrossTotal, i.AmountPaid, i.Status })
             .ToListAsync());
