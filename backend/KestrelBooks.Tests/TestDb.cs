@@ -29,6 +29,19 @@ public sealed class TestDb : IDisposable
 
     public void Dispose() => _conn.Dispose();
 
+    /// <summary>
+    /// InMemory-provider context for tests exercising server-side decimal
+    /// aggregation (e.g. VAT box computation), which SQLite cannot translate.
+    /// Query filters behave identically on both providers.
+    /// </summary>
+    public static (Func<AppDbContext> factory, TenantProvider tenant) InMemory(string name)
+    {
+        var tenant = new TenantProvider();
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(name).Options;
+        return (() => new AppDbContext(options, tenant), tenant);
+    }
+
     public static (Business business, Account debtors, Account sales, Account bank, Account vatOut) SeedBusiness(
         AppDbContext db, string name)
     {
