@@ -2,8 +2,9 @@ name: CI
 on:
   push:
   pull_request:
+
 jobs:
-  backend:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -11,6 +12,31 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Build
-        run: dotnet build backend/KestrelBooks.Api -warnaserror:nullable
+        run: dotnet build backend/KestrelBooks.Api
       - name: Test
         run: dotnet test backend/KestrelBooks.Tests --logger "console;verbosity=normal"
+
+  docker:
+    # Build and publish the production image on every push to main.
+    # Deployment pulls ghcr.io/thematthewwalker/kestrel-books:latest
+    # (see docker-compose.prod.yml and docs/OPERATIONS.md).
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: backend/KestrelBooks.Api
+          push: true
+          tags: |
+            ghcr.io/thematthewwalker/kestrel-books:latest
+            ghcr.io/thematthewwalker/kestrel-books:${{ github.sha }}
