@@ -105,6 +105,6 @@ public class VatBoxTests
         Assert.Equal(50.10m, boxes.VatDueSales);
         Assert.Equal(80.00m, boxes.VatReclaimedCurrPeriod);
         Assert.Equal(250m, boxes.TotalValueSalesExVAT);
-        Assert.Equal(30.10m, boxes.NetVatDue); // |50.10 − 80.00| — a repayment quarter
+        Assert.Equal(29.90m, boxes.NetVatDue); // |50.10 − 80.00| — a repayment quarter
     }
 }
