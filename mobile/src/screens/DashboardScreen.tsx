@@ -20,6 +20,7 @@ const tiles = [
   { title: 'Products & services', route: 'Items' },
   { title: 'Chart of accounts', route: 'Accounts' },
   { title: 'HMRC / MTD', route: 'Mtd' },
+  { title: 'Opening balances', route: 'Opening' },
 ];
 
 export default function DashboardScreen({ route, navigation }: any) {

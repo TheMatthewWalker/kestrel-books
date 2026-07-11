@@ -6,7 +6,8 @@ public enum StockMovementType
     SaleIssue = 1,         // stock issued on a sales invoice (COGS)
     ProductionIssue = 2,   // raw materials issued to a production order (into WIP)
     ProductionReceipt = 3, // finished goods received from a completed order
-    Adjustment = 4         // count corrections, write-offs
+    Adjustment = 4,        // count corrections, write-offs
+    Opening = 5            // conversion: quantity/value brought in from the previous system
 }
 
 /// <summary>

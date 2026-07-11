@@ -43,7 +43,8 @@ public enum JournalStatus { Draft = 0, Posted = 1, Reversed = 2 }
 public enum SourceType
 {
     Manual = 0, SalesInvoice = 1, PurchaseInvoice = 2,
-    Receipt = 3, Payment = 4, Depreciation = 5, AssetCapitalisation = 6, Reversal = 7
+    Receipt = 3, Payment = 4, Depreciation = 5, AssetCapitalisation = 6, Reversal = 7,
+    OpeningBalance = 8
 }
 
 /// <summary>

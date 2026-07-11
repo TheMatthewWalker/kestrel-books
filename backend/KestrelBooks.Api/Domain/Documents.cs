@@ -20,6 +20,11 @@ public abstract class InvoiceBase
     public decimal VatTotal { get; set; }
     public decimal GrossTotal { get; set; }
     public decimal AmountPaid { get; set; }
+    /// <summary>Conversion artefact: an unpaid invoice from the previous system.
+    /// Posted status, but no journal — its total is already inside the opening
+    /// trial balance's debtors/creditors control figure. Settlement and aged
+    /// reporting treat it exactly like any other posted invoice.</summary>
+    public bool IsOpeningBalance { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

@@ -111,7 +111,7 @@ kills a sale.
 
 | # | Task | Est. | Notes |
 |---|------|------|-------|
-| 4.1 | **Opening balances / conversion**: TB import (CSV), open debtors/creditors, stock quantities | 1.5 weeks | Nobody starts a business the day they adopt your software |
+| 4.1 | ~~**Opening balances / conversion**: TB import (CSV), open debtors/creditors, stock quantities~~ **BUILT v1.7** | — | Reconciliation view checks entered invoices against TB controls |
 | 4.2 | **Credit notes** (sales + purchase) with allocation against invoices | 1.5 weeks | Reuses the reversal engine |
 | 4.3 | **Period locking** + simple year-end close (lock date; P&L → retained earnings roll) | 1 week | |
 | 4.4 | **Aged debtors/creditors** (30/60/90+), customer statements | 1 week | |
