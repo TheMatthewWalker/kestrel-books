@@ -43,6 +43,35 @@ public class PurchaseInvoice : InvoiceBase
     public List<PurchaseInvoiceLine> Lines { get; set; } = new();
 }
 
+/// <summary>
+/// Credit notes mirror invoices: same base, opposite posting. AmountPaid here
+/// means "amount applied" — allocated against invoices (a journal-less contra
+/// within the control account) or refunded in cash.
+/// </summary>
+public class SalesCreditNote : InvoiceBase
+{
+    public Guid CustomerId { get; set; }
+    public Customer Customer { get; set; } = null!;
+    public List<SalesCreditNoteLine> Lines { get; set; } = new();
+}
+
+public class PurchaseCreditNote : InvoiceBase
+{
+    public Guid VendorId { get; set; }
+    public Vendor Vendor { get; set; } = null!;
+    public List<PurchaseCreditNoteLine> Lines { get; set; } = new();
+}
+
+public class SalesCreditNoteLine : InvoiceLineBase
+{
+    public Guid SalesCreditNoteId { get; set; }
+}
+
+public class PurchaseCreditNoteLine : InvoiceLineBase
+{
+    public Guid PurchaseCreditNoteId { get; set; }
+}
+
 public abstract class InvoiceLineBase
 {
     public Guid Id { get; set; }
@@ -88,6 +117,10 @@ public class MoneyTransaction
     public Guid? VendorId { get; set; }
     public Guid? SalesInvoiceId { get; set; }
     public Guid? PurchaseInvoiceId { get; set; }
+    /// <summary>Refund paths: money OUT against a sales credit note (refunding a
+    /// customer), money IN against a purchase credit note (supplier refunding us).</summary>
+    public Guid? SalesCreditNoteId { get; set; }
+    public Guid? PurchaseCreditNoteId { get; set; }
     /// <summary>Used when not settling an invoice: the other side of the entry.</summary>
     public Guid? DirectAccountId { get; set; }
     public DocumentStatus Status { get; set; } = DocumentStatus.Draft;

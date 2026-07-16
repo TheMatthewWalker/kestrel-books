@@ -56,14 +56,24 @@ public class VatReturnService
         var box1 = Math.Round(TagMovement(rows, SystemTags.VatOutput, creditNormal: true), 2);
         var box4 = Math.Round(TagMovement(rows, SystemTags.VatInput, creditNormal: false), 2);
 
-        var box6 = await _db.SalesInvoices
+        // Boxes 6/7 are net turnover figures: invoices LESS credit notes for the period.
+        // (Boxes 1/4 already net off automatically — credit notes post to the VAT controls.)
+        var box6 = (await _db.SalesInvoices
             .Where(i => i.BusinessId == businessId && i.Status == DocumentStatus.Posted
                         && i.Date >= from && i.Date <= to)
-            .SumAsync(i => (decimal?)i.NetTotal) ?? 0;
-        var box7 = await _db.PurchaseInvoices
+            .SumAsync(i => (decimal?)i.NetTotal) ?? 0)
+            - (await _db.SalesCreditNotes
+            .Where(c => c.BusinessId == businessId && c.Status == DocumentStatus.Posted
+                        && c.Date >= from && c.Date <= to)
+            .SumAsync(c => (decimal?)c.NetTotal) ?? 0);
+        var box7 = (await _db.PurchaseInvoices
             .Where(i => i.BusinessId == businessId && i.Status == DocumentStatus.Posted
                         && i.Date >= from && i.Date <= to)
-            .SumAsync(i => (decimal?)i.NetTotal) ?? 0;
+            .SumAsync(i => (decimal?)i.NetTotal) ?? 0)
+            - (await _db.PurchaseCreditNotes
+            .Where(c => c.BusinessId == businessId && c.Status == DocumentStatus.Posted
+                        && c.Date >= from && c.Date <= to)
+            .SumAsync(c => (decimal?)c.NetTotal) ?? 0);
 
         var box2 = 0m;
         var box3 = box1 + box2;

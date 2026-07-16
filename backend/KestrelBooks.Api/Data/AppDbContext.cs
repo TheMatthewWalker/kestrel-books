@@ -32,6 +32,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<Item> Items => Set<Item>();
     public DbSet<SalesInvoice> SalesInvoices => Set<SalesInvoice>();
     public DbSet<PurchaseInvoice> PurchaseInvoices => Set<PurchaseInvoice>();
+    public DbSet<SalesCreditNote> SalesCreditNotes => Set<SalesCreditNote>();
+    public DbSet<PurchaseCreditNote> PurchaseCreditNotes => Set<PurchaseCreditNote>();
     public DbSet<MoneyTransaction> MoneyTransactions => Set<MoneyTransaction>();
     public DbSet<FixedAsset> FixedAssets => Set<FixedAsset>();
     public DbSet<BankStatementImport> BankStatementImports => Set<BankStatementImport>();
@@ -62,7 +64,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         // One journal per source document (sales/purchase invoice, receipt, payment):
         // concurrent double-posts violate this index and surface as HTTP 409.
         b.Entity<JournalEntry>().HasIndex(x => new { x.BusinessId, x.Source, x.SourceId })
-            .IsUnique().HasFilter("\"SourceId\" IS NOT NULL AND \"Source\" IN (1, 2, 3, 4)");
+            .IsUnique().HasFilter("\"SourceId\" IS NOT NULL AND \"Source\" IN (1, 2, 3, 4, 9, 10)");
         b.Entity<JournalEntry>()
             .HasMany(x => x.Lines).WithOne(x => x.JournalEntry)
             .HasForeignKey(x => x.JournalEntryId).OnDelete(DeleteBehavior.Cascade);
@@ -72,7 +74,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             .HasOne(x => x.Account).WithMany().HasForeignKey(x => x.AccountId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        foreach (var t in new[] { typeof(SalesInvoice), typeof(PurchaseInvoice) })
+        foreach (var t in new[] { typeof(SalesInvoice), typeof(PurchaseInvoice), typeof(SalesCreditNote), typeof(PurchaseCreditNote) })
         {
             var e = b.Entity(t);
             e.Property("NetTotal").HasPrecision(18, 2);
@@ -84,6 +86,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             .HasForeignKey(x => x.SalesInvoiceId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<PurchaseInvoice>().HasMany(x => x.Lines).WithOne()
             .HasForeignKey(x => x.PurchaseInvoiceId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<SalesCreditNote>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.SalesCreditNoteId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<PurchaseCreditNote>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.PurchaseCreditNoteId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<MoneyTransaction>().Property(x => x.Amount).HasPrecision(18, 2);
         b.Entity<FixedAsset>().Property(x => x.Cost).HasPrecision(18, 2);
@@ -143,6 +149,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<Item>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<SalesInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<PurchaseInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<SalesCreditNote>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<PurchaseCreditNote>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<MoneyTransaction>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<FixedAsset>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<BankStatementImport>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);

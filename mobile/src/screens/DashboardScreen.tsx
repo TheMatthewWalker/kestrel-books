@@ -20,6 +20,8 @@ const tiles = [
   { title: 'Products & services', route: 'Items' },
   { title: 'Chart of accounts', route: 'Accounts' },
   { title: 'HMRC / MTD', route: 'Mtd' },
+  { title: 'Sales credit notes', route: 'CreditNotes', params: { kind: 'sales' } },
+  { title: 'Purchase credit notes', route: 'CreditNotes', params: { kind: 'purchase' } },
   { title: 'Opening balances', route: 'Opening' },
 ];
 

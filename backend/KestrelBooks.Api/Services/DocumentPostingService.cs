@@ -176,6 +176,34 @@ public class DocumentPostingService
             narrative = $"Payment against purchase invoice {inv.Number}";
             inv.AmountPaid += tx.Amount;
         }
+        else if (tx.SalesCreditNoteId is Guid scn)
+        {
+            // Refunding a customer their credit balance: Dr Debtors / Cr Bank.
+            if (tx.Direction != MoneyDirection.Out)
+                throw new InvalidOperationException("A customer credit note refund is money out.");
+            var cn = await _db.SalesCreditNotes.FirstAsync(c => c.Id == scn && c.BusinessId == businessId);
+            if (cn.Status != DocumentStatus.Posted)
+                throw new InvalidOperationException("Post the credit note before refunding it.");
+            if (tx.Amount > cn.GrossTotal - cn.AmountPaid)
+                throw new InvalidOperationException("Refund exceeds the credit note's unapplied balance.");
+            otherSide = (await _posting.RequireTaggedAccountAsync(businessId, SystemTags.TradeDebtors)).Id;
+            narrative = $"Refund against credit note {cn.Number}";
+            cn.AmountPaid += tx.Amount;
+        }
+        else if (tx.PurchaseCreditNoteId is Guid pcn)
+        {
+            // Supplier refunding us: Dr Bank / Cr Creditors.
+            if (tx.Direction != MoneyDirection.In)
+                throw new InvalidOperationException("A supplier credit note refund is money in.");
+            var cn = await _db.PurchaseCreditNotes.FirstAsync(c => c.Id == pcn && c.BusinessId == businessId);
+            if (cn.Status != DocumentStatus.Posted)
+                throw new InvalidOperationException("Post the credit note before recording the refund.");
+            if (tx.Amount > cn.GrossTotal - cn.AmountPaid)
+                throw new InvalidOperationException("Refund exceeds the credit note's unapplied balance.");
+            otherSide = (await _posting.RequireTaggedAccountAsync(businessId, SystemTags.TradeCreditors)).Id;
+            narrative = $"Supplier refund against credit note {cn.Number}";
+            cn.AmountPaid += tx.Amount;
+        }
         else if (tx.DirectAccountId is Guid direct)
         {
             otherSide = direct;
@@ -206,12 +234,133 @@ public class DocumentPostingService
         return journal;
     }
 
+    /// <summary>
+    /// Sales credit note: the mirror of the sales invoice —
+    ///   Dr Sales (net per line account); Dr Output VAT; Cr Trade Debtors (gross).
+    /// Stock-tracked lines return goods IN at the current average cost,
+    /// reversing COGS (Dr Stock / Cr COGS) in the same journal.
+    /// </summary>
+    public async Task<JournalEntry> PostSalesCreditNoteAsync(Guid businessId, Guid creditNoteId, Guid userId)
+    {
+        var cn = await _db.SalesCreditNotes.Include(c => c.Lines).Include(c => c.Customer)
+            .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.BusinessId == businessId)
+            ?? throw new KeyNotFoundException("Credit note not found.");
+        if (cn.Status != DocumentStatus.Draft)
+            throw new InvalidOperationException("Only draft credit notes can be posted.");
+        if (cn.Lines.Count == 0)
+            throw new InvalidOperationException("Credit note has no lines.");
+
+        Recalculate(cn);
+        var debtors = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.TradeDebtors);
+        var outputVat = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.VatOutput);
+
+        var lines = new List<DraftLine>();
+        foreach (var g in cn.Lines.GroupBy(l => l.AccountId))
+            lines.Add(new DraftLine(g.Key, g.Sum(l => l.Net), 0, $"Credit note {cn.Number}"));
+        if (cn.VatTotal > 0)
+            lines.Add(new DraftLine(outputVat.Id, cn.VatTotal, 0, $"Output VAT reversal — credit note {cn.Number}"));
+        lines.Add(new DraftLine(debtors.Id, 0, cn.GrossTotal, $"{cn.Customer.Name} — credit note {cn.Number}"));
+
+        var itemIds = cn.Lines.Where(l => l.ItemId != null).Select(l => l.ItemId!.Value).ToList();
+        var trackedItems = await _db.Items
+            .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
+            .ToDictionaryAsync(i => i.Id);
+        var movements = new List<StockMovement>();
+        foreach (var line in cn.Lines.Where(l => l.ItemId != null && trackedItems.ContainsKey(l.ItemId!.Value)))
+        {
+            var item = trackedItems[line.ItemId!.Value];
+            var movement = await _stock.MoveAsync(item, cn.Date, StockMovementType.SaleIssue,
+                line.Quantity, item.AvgUnitCost, null, cn.Id, $"Returned on credit note {cn.Number}");
+            movements.Add(movement);
+            var value = Math.Abs(movement.Value);
+            if (value > 0)
+            {
+                lines.Add(new DraftLine(await _stock.StockAccountIdAsync(item), value, 0,
+                    $"Stock return {item.Code} × {line.Quantity}"));
+                lines.Add(new DraftLine(await _stock.CogsAccountIdAsync(item), 0, value,
+                    $"COGS reversal {item.Code} × {line.Quantity}"));
+            }
+        }
+
+        var journal = await _posting.CreateDraftAsync(businessId, userId, cn.Date,
+            cn.Number, $"Sales credit note {cn.Number} — {cn.Customer.Name}",
+            SourceType.SalesCreditNote, cn.Id, lines);
+        await _posting.PostAsync(businessId, journal.Id, userId);
+        foreach (var m in movements) m.JournalEntryId = journal.Id;
+
+        cn.Status = DocumentStatus.Posted;
+        cn.JournalEntryId = journal.Id;
+        await _db.SaveChangesAsync();
+        return journal;
+    }
+
+    /// <summary>Purchase credit note: Dr Trade Creditors (gross); Cr expense/stock (net); Cr Input VAT.
+    /// Stock-tracked lines are goods going BACK to the supplier — issued at AVCO.</summary>
+    public async Task<JournalEntry> PostPurchaseCreditNoteAsync(Guid businessId, Guid creditNoteId, Guid userId)
+    {
+        var cn = await _db.PurchaseCreditNotes.Include(c => c.Lines).Include(c => c.Vendor)
+            .FirstOrDefaultAsync(c => c.Id == creditNoteId && c.BusinessId == businessId)
+            ?? throw new KeyNotFoundException("Credit note not found.");
+        if (cn.Status != DocumentStatus.Draft)
+            throw new InvalidOperationException("Only draft credit notes can be posted.");
+        if (cn.Lines.Count == 0)
+            throw new InvalidOperationException("Credit note has no lines.");
+
+        Recalculate(cn);
+        var creditors = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.TradeCreditors);
+        var inputVat = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.VatInput);
+
+        var itemIds = cn.Lines.Where(l => l.ItemId != null).Select(l => l.ItemId!.Value).ToList();
+        var trackedItems = await _db.Items
+            .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
+            .ToDictionaryAsync(i => i.Id);
+
+        var resolved = new List<(Guid accountId, decimal net)>();
+        var movements = new List<StockMovement>();
+        foreach (var line in cn.Lines)
+        {
+            if (line.ItemId != null && trackedItems.TryGetValue(line.ItemId.Value, out var item))
+            {
+                resolved.Add((await _stock.StockAccountIdAsync(item), line.Net));
+                var movement = await _stock.MoveAsync(item, cn.Date, StockMovementType.PurchaseReceipt,
+                    -line.Quantity, null, null, cn.Id, $"Returned to supplier on credit note {cn.Number}");
+                movements.Add(movement);
+            }
+            else
+            {
+                resolved.Add((line.AccountId, line.Net));
+            }
+        }
+
+        var lines = new List<DraftLine>
+        {
+            new(creditors.Id, cn.GrossTotal, 0, $"{cn.Vendor.Name} — credit note {cn.Number}")
+        };
+        foreach (var g in resolved.GroupBy(r => r.accountId))
+            lines.Add(new DraftLine(g.Key, 0, g.Sum(r => r.net), $"Credit note {cn.Number}"));
+        if (cn.VatTotal > 0)
+            lines.Add(new DraftLine(inputVat.Id, 0, cn.VatTotal, $"Input VAT reversal — credit note {cn.Number}"));
+
+        var journal = await _posting.CreateDraftAsync(businessId, userId, cn.Date,
+            cn.Number, $"Purchase credit note {cn.Number} — {cn.Vendor.Name}",
+            SourceType.PurchaseCreditNote, cn.Id, lines);
+        await _posting.PostAsync(businessId, journal.Id, userId);
+        foreach (var m in movements) m.JournalEntryId = journal.Id;
+
+        cn.Status = DocumentStatus.Posted;
+        cn.JournalEntryId = journal.Id;
+        await _db.SaveChangesAsync();
+        return journal;
+    }
+
     public static void Recalculate(InvoiceBase inv)
     {
         var lines = inv switch
         {
             SalesInvoice s => s.Lines.Cast<InvoiceLineBase>().ToList(),
             PurchaseInvoice p => p.Lines.Cast<InvoiceLineBase>().ToList(),
+            SalesCreditNote sc => sc.Lines.Cast<InvoiceLineBase>().ToList(),
+            PurchaseCreditNote pc => pc.Lines.Cast<InvoiceLineBase>().ToList(),
             _ => new List<InvoiceLineBase>()
         };
         inv.NetTotal = lines.Sum(l => l.Net);
