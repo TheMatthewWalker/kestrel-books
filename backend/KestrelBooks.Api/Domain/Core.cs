@@ -22,6 +22,10 @@ public class Business
     public string BaseCurrency { get; set; } = "GBP";
     /// <summary>First month of the financial year, 1-12 (e.g. 4 = April).</summary>
     public int YearStartMonth { get; set; } = 4;
+    /// <summary>No journal may be posted, created or reversed with a date on or
+    /// before this. Set manually (e.g. after filing VAT) or automatically by
+    /// year-end close. Null = nothing locked.</summary>
+    public DateOnly? LockedThrough { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

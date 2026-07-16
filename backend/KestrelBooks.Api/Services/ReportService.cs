@@ -50,6 +50,7 @@ public class ReportService
     {
         var rows = await PostedLines(businessId)
             .Where(l => l.JournalEntry.Date >= from && l.JournalEntry.Date <= to
+                        && l.JournalEntry.Source != SourceType.YearEndClose
                         && (l.Account.Type == AccountType.Income || l.Account.Type == AccountType.Expense))
             .GroupBy(l => new { l.Account.Code, l.Account.Name, l.Account.Type, l.Account.SubType })
             .Select(g => new

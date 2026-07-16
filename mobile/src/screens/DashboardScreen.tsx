@@ -23,6 +23,7 @@ const tiles = [
   { title: 'Sales credit notes', route: 'CreditNotes', params: { kind: 'sales' } },
   { title: 'Purchase credit notes', route: 'CreditNotes', params: { kind: 'purchase' } },
   { title: 'Opening balances', route: 'Opening' },
+  { title: 'Periods & year end', route: 'Periods' },
 ];
 
 export default function DashboardScreen({ route, navigation }: any) {

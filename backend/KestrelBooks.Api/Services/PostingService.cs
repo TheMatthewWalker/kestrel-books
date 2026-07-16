@@ -72,6 +72,7 @@ public class PostingService
             ?? throw new KeyNotFoundException("Journal not found.");
         if (entry.Status != JournalStatus.Draft)
             throw new InvalidOperationException("Only draft journals can be posted.");
+        await EnsureUnlockedAsync(businessId, entry.Date);
         Validate(entry);
         entry.Status = JournalStatus.Posted;
         entry.PostedAtUtc = DateTime.UtcNow;
@@ -88,6 +89,9 @@ public class PostingService
             ?? throw new KeyNotFoundException("Journal not found.");
         if (original.Status != JournalStatus.Posted)
             throw new InvalidOperationException("Only posted journals can be reversed.");
+        // Reversing mutates the original journal's status — locked history stays locked.
+        await EnsureUnlockedAsync(businessId, original.Date);
+        await EnsureUnlockedAsync(businessId, reversalDate ?? original.Date);
 
         var reversal = new JournalEntry
         {
