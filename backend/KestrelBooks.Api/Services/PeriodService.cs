@@ -61,21 +61,26 @@ public class PeriodService
 
         // Cumulative P&L balances to the year end. Prior years' closing lines are
         // included in the sums, so only the unclosed residue remains — no need to
-        // track which year a line "belongs" to.
-        var balances = await _db.JournalLines
+        // track which year a line "belongs" to. Aggregation is client-side:
+        // SQLite (used in tests) can't translate decimal Sum, and a once-a-year
+        // operation over one business's P&L lines is trivial in memory.
+        var rawLines = await _db.JournalLines
             .Where(l => l.JournalEntry.BusinessId == businessId
                         && l.JournalEntry.Date <= yearEnd
                         && (l.JournalEntry.Status == JournalStatus.Posted
                             || l.JournalEntry.Status == JournalStatus.Reversed)
                         && (l.Account.Type == AccountType.Income || l.Account.Type == AccountType.Expense))
-            .GroupBy(l => new { l.AccountId, l.Account.Type })
+            .Select(l => new { l.AccountId, l.Account.Type, l.Debit, l.Credit })
+            .ToListAsync();
+        var balances = rawLines
+            .GroupBy(l => new { l.AccountId, l.Type })
             .Select(g => new
             {
                 g.Key.AccountId,
                 g.Key.Type,
                 Balance = g.Sum(x => x.Debit - x.Credit) // debit-positive raw balance
             })
-            .ToListAsync();
+            .ToList();
 
         var lines = new List<DraftLine>();
         decimal profit = 0; // credit-normal: positive = profit
