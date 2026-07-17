@@ -90,6 +90,7 @@ builder.Services.AddScoped<AgedReportService>();
 builder.Services.AddSingleton<PdfService>();
 builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<RecurringInvoiceService>();
+builder.Services.AddScoped<PracticeDashboardService>();
 builder.Services.AddHostedService<RecurringInvoiceGenerator>();
 // Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and
 // MFA/state payloads survive restarts. Move to a key vault/blob in production.

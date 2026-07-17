@@ -104,7 +104,7 @@ pagination with X-Total-Count on all growing lists; Swagger Bearer auth;
 daily cleanup of dead refresh tokens/codes (audit events kept 2 years).
 Requires: `dotnet ef migrations add Hardening`.
 
-## Phase 4 — Accounting table stakes (9–11 weeks)
+## Phase 4 — Accounting table stakes (9–11 weeks) — **COMPLETE (v1.6–v1.15), pending one migration + full test run on PC**
 
 What a practising bookkeeper assumes exists. Ordered by how often its absence
 kills a sale.

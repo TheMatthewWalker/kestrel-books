@@ -27,6 +27,7 @@ export default function BusinessesScreen({ navigation }: any) {
 
   return (
     <Screen>
+      <Button title="Practice overview — what's due" onPress={() => navigation.navigate('Practice')} />
       <Text style={[type.body, { marginBottom: spacing.s }]}>Signed in as {displayName}</Text>
       {items === null ? <Loading /> : items.length === 0 ? (
         <Empty text="No clients yet. Add your first business — a full UK chart of accounts is created automatically." />
