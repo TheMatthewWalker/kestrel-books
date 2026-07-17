@@ -47,6 +47,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<OneTimeCode> OneTimeCodes => Set<OneTimeCode>();
     public DbSet<AuthEvent> AuthEvents => Set<AuthEvent>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -148,6 +149,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<RefreshToken>().HasIndex(x => x.UserId);
         b.Entity<OneTimeCode>().HasIndex(x => new { x.UserId, x.Purpose });
         b.Entity<AuthEvent>().HasIndex(x => x.AtUtc);
+        b.Entity<Attachment>().HasIndex(x => new { x.BusinessId, x.EntityKind, x.EntityId });
 
         // ---- Tenant isolation: global query filters ----
         b.Entity<Account>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
@@ -171,5 +173,6 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<ProductionOrder>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<HmrcConnection>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<VatSubmission>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<Attachment>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
     }
 }

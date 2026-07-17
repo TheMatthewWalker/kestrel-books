@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { api, errorMessage } from '../api';
+import AttachmentsBlock from '../components/AttachmentsBlock';
 import { Badge, Button, Empty, Input, Label, LedgerRow, Loading, Screen } from '../components/ui';
 import { colors, gbp, spacing, type } from '../theme';
 
@@ -163,6 +164,10 @@ export default function InvoiceFormScreen({ route, navigation }: any) {
             and locks the invoice. Corrections after posting are made by reversal, keeping the audit trail.
           </Text>
         </>
+      )}
+          {invoiceId && (
+        <AttachmentsBlock businessId={businessId}
+          entityKind={kind === 'sales' ? 0 : 1} entityId={invoiceId} />
       )}
     </Screen>
   );

@@ -14,6 +14,7 @@ public interface IReceiptStorage
 {
     Task<string> SaveAsync(Guid businessId, string extension, byte[] data);
     Task<byte[]?> LoadAsync(Guid businessId, string storedName);
+    Task DeleteAsync(Guid businessId, string storedName);
 }
 
 /// <summary>Local disk under Storage/receipts/{businessId}/ — mount a volume in Docker.</summary>
@@ -36,6 +37,13 @@ public class DiskReceiptStorage : IReceiptStorage
     {
         var path = Path.Combine(_root, businessId.ToString(), Path.GetFileName(storedName));
         return File.Exists(path) ? await File.ReadAllBytesAsync(path) : null;
+    }
+
+    public Task DeleteAsync(Guid businessId, string storedName)
+    {
+        var path = Path.Combine(_root, businessId.ToString(), Path.GetFileName(storedName));
+        if (File.Exists(path)) File.Delete(path);
+        return Task.CompletedTask;
     }
 }
 
@@ -84,4 +92,7 @@ public class S3ReceiptStorage : IReceiptStorage
             return null;
         }
     }
+
+    public Task DeleteAsync(Guid businessId, string storedName) =>
+        _s3.DeleteObjectAsync(_bucket, $"{businessId}/{Path.GetFileName(storedName)}");
 }
