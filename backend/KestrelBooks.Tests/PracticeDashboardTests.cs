@@ -11,7 +11,14 @@ public class PracticeDashboardTests : IDisposable
     private readonly TestDb _db = new();
     private readonly Guid _userId = Guid.NewGuid();
 
-    public PracticeDashboardTests() { }
+    public PracticeDashboardTests()
+    {
+        // UserBusinessAccess.UserId references AspNetUsers — seed a real user so
+        // the FK holds (in the app, access rows always point at a registered user).
+        using var ctx = _db.Create();
+        ctx.Users.Add(new AppUser { Id = _userId, UserName = "practitioner@test", Email = "practitioner@test" });
+        ctx.SaveChanges();
+    }
 
     private Guid SeedClient(string name, int yearStartMonth, string? vrn, VatScheme scheme = VatScheme.StandardAccrual)
     {
@@ -69,12 +76,14 @@ public class PracticeDashboardTests : IDisposable
         // A business owned by someone else entirely.
         using (var ctx = _db.Create())
         {
+            var otherUserId = Guid.NewGuid();
+            ctx.Users.Add(new AppUser { Id = otherUserId, UserName = "other@test", Email = "other@test" });
             var other = new Business { Id = Guid.NewGuid(), Name = "Not mine", YearStartMonth = 4 };
             ctx.Businesses.Add(other);
             ctx.Accounts.AddRange(CoaSeeder.DefaultChart(other.Id));
             ctx.UserBusinessAccess.Add(new UserBusinessAccess
             {
-                UserId = Guid.NewGuid(), BusinessId = other.Id, Role = BusinessRole.Owner
+                UserId = otherUserId, BusinessId = other.Id, Role = BusinessRole.Owner
             });
             ctx.SaveChanges();
         }
