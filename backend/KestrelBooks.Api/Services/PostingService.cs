@@ -20,10 +20,21 @@ public class PostingService
     private readonly AppDbContext _db;
     public PostingService(AppDbContext db) => _db = db;
 
+    /// <summary>Throws if the date falls in a locked period. All financial writes route through here.</summary>
+    private async Task EnsureUnlockedAsync(Guid businessId, DateOnly date)
+    {
+        var lockedThrough = await _db.Businesses.Where(b => b.Id == businessId)
+            .Select(b => b.LockedThrough).FirstOrDefaultAsync();
+        if (lockedThrough is DateOnly locked && date <= locked)
+            throw new InvalidOperationException(
+                $"The period up to {locked:dd MMM yyyy} is locked. Unlock it before posting into it.");
+    }
+
     public async Task<JournalEntry> CreateDraftAsync(
         Guid businessId, Guid userId, DateOnly date, string reference, string narrative,
         SourceType source, Guid? sourceId, IEnumerable<DraftLine> lines)
     {
+        await EnsureUnlockedAsync(businessId, date);
         var entry = new JournalEntry
         {
             Id = Guid.NewGuid(),
