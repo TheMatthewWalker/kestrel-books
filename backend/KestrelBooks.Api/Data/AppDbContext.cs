@@ -48,6 +48,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<OneTimeCode> OneTimeCodes => Set<OneTimeCode>();
     public DbSet<AuthEvent> AuthEvents => Set<AuthEvent>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<RecurringInvoice> RecurringInvoices => Set<RecurringInvoice>();
+    public DbSet<RecurringInvoiceLine> RecurringInvoiceLines => Set<RecurringInvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -150,6 +152,11 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<OneTimeCode>().HasIndex(x => new { x.UserId, x.Purpose });
         b.Entity<AuthEvent>().HasIndex(x => x.AtUtc);
         b.Entity<Attachment>().HasIndex(x => new { x.BusinessId, x.EntityKind, x.EntityId });
+        b.Entity<RecurringInvoice>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.RecurringInvoiceId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<RecurringInvoice>().HasIndex(x => new { x.BusinessId, x.NextRunDate });
+        b.Entity<RecurringInvoiceLine>().Property(x => x.Quantity).HasPrecision(18, 3);
+        b.Entity<RecurringInvoiceLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
 
         // ---- Tenant isolation: global query filters ----
         b.Entity<Account>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
@@ -174,5 +181,6 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<HmrcConnection>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<VatSubmission>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<Attachment>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<RecurringInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
     }
 }

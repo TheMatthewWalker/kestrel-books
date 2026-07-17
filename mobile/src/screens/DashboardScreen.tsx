@@ -22,6 +22,7 @@ const tiles = [
   { title: 'HMRC / MTD', route: 'Mtd' },
   { title: 'Sales credit notes', route: 'CreditNotes', params: { kind: 'sales' } },
   { title: 'Purchase credit notes', route: 'CreditNotes', params: { kind: 'purchase' } },
+  { title: 'Recurring invoices', route: 'Recurring' },
   { title: 'Opening balances', route: 'Opening' },
   { title: 'Aged debtors', route: 'Aged', params: { kind: 'debtors' } },
   { title: 'Aged creditors', route: 'Aged', params: { kind: 'creditors' } },
