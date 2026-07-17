@@ -23,6 +23,8 @@ const tiles = [
   { title: 'Sales credit notes', route: 'CreditNotes', params: { kind: 'sales' } },
   { title: 'Purchase credit notes', route: 'CreditNotes', params: { kind: 'purchase' } },
   { title: 'Opening balances', route: 'Opening' },
+  { title: 'Aged debtors', route: 'Aged', params: { kind: 'debtors' } },
+  { title: 'Aged creditors', route: 'Aged', params: { kind: 'creditors' } },
   { title: 'Periods & year end', route: 'Periods' },
 ];
 

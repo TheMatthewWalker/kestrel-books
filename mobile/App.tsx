@@ -25,6 +25,7 @@ import SecurityScreen from './src/screens/SecurityScreen';
 import OpeningScreen from './src/screens/OpeningScreen';
 import CreditNotesScreen from './src/screens/CreditNotesScreen';
 import PeriodsScreen from './src/screens/PeriodsScreen';
+import AgedScreen from './src/screens/AgedScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -68,6 +69,7 @@ function Root() {
           <Stack.Screen name="Opening" component={OpeningScreen} options={{ title: 'Opening Balances' }} />
           <Stack.Screen name="CreditNotes" component={CreditNotesScreen} options={{ title: 'Credit Notes' }} />
           <Stack.Screen name="Periods" component={PeriodsScreen} options={{ title: 'Periods & Year End' }} />
+          <Stack.Screen name="Aged" component={AgedScreen} options={{ title: 'Ageing' }} />
         </>
       )}
     </Stack.Navigator>

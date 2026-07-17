@@ -86,6 +86,7 @@ builder.Services.AddScoped<HmrcService>();
 builder.Services.AddScoped<VatReturnService>();
 builder.Services.AddScoped<OpeningBalanceService>();
 builder.Services.AddScoped<PeriodService>();
+builder.Services.AddScoped<AgedReportService>();
 // Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and
 // MFA/state payloads survive restarts. Move to a key vault/blob in production.
 builder.Services.AddDataProtection()
