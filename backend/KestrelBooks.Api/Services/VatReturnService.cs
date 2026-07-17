@@ -41,6 +41,127 @@ public class VatReturnService
 
     public async Task<VatBoxes> ComputeAsync(Guid businessId, DateOnly from, DateOnly to)
     {
+        var business = await _db.Businesses.FirstAsync(b => b.Id == businessId);
+        return business.VatScheme switch
+        {
+            VatScheme.CashAccounting => await ComputeCashAsync(businessId, from, to),
+            VatScheme.FlatRate => await ComputeFlatRateAsync(businessId, business.FlatRatePercent, from, to),
+            _ => await ComputeAccrualAsync(businessId, from, to),
+        };
+    }
+
+    /// <summary>
+    /// Cash accounting: VAT is due when money moves, not when invoices are raised.
+    /// Each payment against an invoice/credit note carries VAT in the document's
+    /// own VAT:gross ratio (HMRC-accepted apportionment for part-payments).
+    /// Direct money with a VAT split (e.g. confirmed receipt scans) is a dated
+    /// cash event already — its VAT comes straight off the journal lines.
+    /// Limitation (documented): credit-note-to-invoice contra allocations are
+    /// undated and treated as VAT-neutral; exact only when both documents share
+    /// a VAT profile, which is the overwhelmingly common case.
+    /// </summary>
+    private async Task<VatBoxes> ComputeCashAsync(Guid businessId, DateOnly from, DateOnly to)
+    {
+        var txs = await _db.MoneyTransactions
+            .Where(t => t.BusinessId == businessId && t.Status == DocumentStatus.Posted
+                        && t.Date >= from && t.Date <= to)
+            .Select(t => new
+            {
+                t.Amount, t.Direction,
+                SalesInv = t.SalesInvoice == null ? null
+                    : new { t.SalesInvoice.VatTotal, t.SalesInvoice.NetTotal, t.SalesInvoice.GrossTotal },
+                PurchInv = t.PurchaseInvoice == null ? null
+                    : new { t.PurchaseInvoice.VatTotal, t.PurchaseInvoice.NetTotal, t.PurchaseInvoice.GrossTotal },
+                SalesCn = t.SalesCreditNote == null ? null
+                    : new { t.SalesCreditNote.VatTotal, t.SalesCreditNote.NetTotal, t.SalesCreditNote.GrossTotal },
+                PurchCn = t.PurchaseCreditNote == null ? null
+                    : new { t.PurchaseCreditNote.VatTotal, t.PurchaseCreditNote.NetTotal, t.PurchaseCreditNote.GrossTotal },
+            })
+            .ToListAsync();
+
+        decimal box1 = 0, box4 = 0, box6 = 0, box7 = 0;
+        foreach (var t in txs)
+        {
+            if (t.SalesInv is not null && t.SalesInv.GrossTotal != 0)
+            {
+                box1 += t.Amount * t.SalesInv.VatTotal / t.SalesInv.GrossTotal;
+                box6 += t.Amount * t.SalesInv.NetTotal / t.SalesInv.GrossTotal;
+            }
+            else if (t.PurchInv is not null && t.PurchInv.GrossTotal != 0)
+            {
+                box4 += t.Amount * t.PurchInv.VatTotal / t.PurchInv.GrossTotal;
+                box7 += t.Amount * t.PurchInv.NetTotal / t.PurchInv.GrossTotal;
+            }
+            else if (t.SalesCn is not null && t.SalesCn.GrossTotal != 0)
+            {
+                // Refunding a customer: output VAT and turnover come back down.
+                box1 -= t.Amount * t.SalesCn.VatTotal / t.SalesCn.GrossTotal;
+                box6 -= t.Amount * t.SalesCn.NetTotal / t.SalesCn.GrossTotal;
+            }
+            else if (t.PurchCn is not null && t.PurchCn.GrossTotal != 0)
+            {
+                box4 -= t.Amount * t.PurchCn.VatTotal / t.PurchCn.GrossTotal;
+                box7 -= t.Amount * t.PurchCn.NetTotal / t.PurchCn.GrossTotal;
+            }
+        }
+
+        // Direct money posted with an explicit VAT split (Source Receipt/Payment
+        // journals touching the VAT controls) — dated cash events by construction.
+        var directVat = await _db.JournalLines
+            .Where(l => l.JournalEntry.BusinessId == businessId
+                        && l.JournalEntry.Status != JournalStatus.Draft
+                        && (l.JournalEntry.Source == SourceType.Receipt || l.JournalEntry.Source == SourceType.Payment)
+                        && l.JournalEntry.Date >= from && l.JournalEntry.Date <= to
+                        && (l.Account.SystemTag == SystemTags.VatOutput || l.Account.SystemTag == SystemTags.VatInput))
+            .Select(l => new { l.Account.SystemTag, l.Debit, l.Credit })
+            .ToListAsync();
+        box1 += directVat.Where(r => r.SystemTag == SystemTags.VatOutput).Sum(r => r.Credit - r.Debit);
+        box4 += directVat.Where(r => r.SystemTag == SystemTags.VatInput).Sum(r => r.Debit - r.Credit);
+
+        return Assemble(box1, box4, box6, box7);
+    }
+
+    /// <summary>
+    /// Flat Rate Scheme (cash-based turnover): box 6 is VAT-INCLUSIVE turnover
+    /// received — the scheme's famous quirk — and box 1 is that figure times the
+    /// business's flat rate. No input VAT recovery (box 4 and box 7 are zero).
+    /// Limitation (documented): the capital-goods-over-£2,000 reclaim is not
+    /// implemented; such purchases need a manual box adjustment before submission.
+    /// </summary>
+    private async Task<VatBoxes> ComputeFlatRateAsync(Guid businessId, decimal ratePercent, DateOnly from, DateOnly to)
+    {
+        var receipts = await _db.MoneyTransactions
+            .Where(t => t.BusinessId == businessId && t.Status == DocumentStatus.Posted
+                        && t.Direction == MoneyDirection.In
+                        && t.PurchaseCreditNoteId == null // supplier refunds are not turnover
+                        && t.Date >= from && t.Date <= to)
+            .Select(t => t.Amount)
+            .ToListAsync();
+        var refunds = await _db.MoneyTransactions
+            .Where(t => t.BusinessId == businessId && t.Status == DocumentStatus.Posted
+                        && t.Direction == MoneyDirection.Out && t.SalesCreditNoteId != null
+                        && t.Date >= from && t.Date <= to)
+            .Select(t => t.Amount)
+            .ToListAsync();
+
+        var grossTurnover = receipts.Sum() - refunds.Sum();
+        var box1 = Math.Round(grossTurnover * ratePercent / 100m, 2, MidpointRounding.AwayFromZero);
+        return new VatBoxes(box1, 0, box1, 0, box1,
+            Math.Floor(Math.Abs(grossTurnover)) * Math.Sign(grossTurnover), 0, 0, 0);
+    }
+
+    private static VatBoxes Assemble(decimal box1, decimal box4, decimal box6, decimal box7)
+    {
+        box1 = Math.Round(box1, 2, MidpointRounding.AwayFromZero);
+        box4 = Math.Round(box4, 2, MidpointRounding.AwayFromZero);
+        var box3 = box1;
+        var box5 = Math.Abs(box3 - box4);
+        decimal WholePounds(decimal v) => Math.Floor(Math.Abs(v)) * Math.Sign(v);
+        return new VatBoxes(box1, 0, box3, box4, box5, WholePounds(box6), WholePounds(box7), 0, 0);
+    }
+
+    private async Task<VatBoxes> ComputeAccrualAsync(Guid businessId, DateOnly from, DateOnly to)
+    {
         decimal TagMovement(List<(string? tag, decimal dr, decimal cr)> rows, string tag, bool creditNormal) =>
             rows.Where(r => r.tag == tag).Sum(r => creditNormal ? r.cr - r.dr : r.dr - r.cr);
 

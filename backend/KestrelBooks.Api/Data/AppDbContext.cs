@@ -53,6 +53,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         base.OnModelCreating(b);
 
         b.Entity<UserBusinessAccess>().HasKey(x => new { x.UserId, x.BusinessId });
+        b.Entity<Business>().Property(x => x.FlatRatePercent).HasPrecision(5, 2);
 
         b.Entity<Account>().HasIndex(x => new { x.BusinessId, x.Code }).IsUnique();
         b.Entity<Account>().Property(x => x.Code).HasMaxLength(10);
@@ -92,6 +93,14 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
             .HasForeignKey(x => x.PurchaseCreditNoteId).OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<MoneyTransaction>().Property(x => x.Amount).HasPrecision(18, 2);
+        b.Entity<MoneyTransaction>().HasOne(x => x.SalesInvoice).WithMany()
+            .HasForeignKey(x => x.SalesInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<MoneyTransaction>().HasOne(x => x.PurchaseInvoice).WithMany()
+            .HasForeignKey(x => x.PurchaseInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<MoneyTransaction>().HasOne(x => x.SalesCreditNote).WithMany()
+            .HasForeignKey(x => x.SalesCreditNoteId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<MoneyTransaction>().HasOne(x => x.PurchaseCreditNote).WithMany()
+            .HasForeignKey(x => x.PurchaseCreditNoteId).OnDelete(DeleteBehavior.Restrict);
         b.Entity<FixedAsset>().Property(x => x.Cost).HasPrecision(18, 2);
         b.Entity<FixedAsset>().Property(x => x.ResidualValue).HasPrecision(18, 2);
         b.Entity<FixedAsset>().Property(x => x.AccumulatedDepreciation).HasPrecision(18, 2);

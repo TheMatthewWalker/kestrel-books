@@ -13,6 +13,14 @@ public class AppUser : IdentityUser<Guid>
 }
 
 /// <summary>A client business whose books are managed in the app. All ledger data is scoped to one Business.</summary>
+/// <summary>
+/// How the VAT return is computed from the ledger:
+///   StandardAccrual — VAT follows invoice dates (the default).
+///   CashAccounting — VAT follows payment dates (turnover ≤ £1.35m to join).
+///   FlatRate — box 1 is a fixed percentage of VAT-inclusive turnover received.
+/// </summary>
+public enum VatScheme { StandardAccrual = 0, CashAccounting = 1, FlatRate = 2 }
+
 public class Business
 {
     public Guid Id { get; set; }
@@ -26,6 +34,9 @@ public class Business
     /// before this. Set manually (e.g. after filing VAT) or automatically by
     /// year-end close. Null = nothing locked.</summary>
     public DateOnly? LockedThrough { get; set; }
+    public VatScheme VatScheme { get; set; } = VatScheme.StandardAccrual;
+    /// <summary>Flat rate percentage (e.g. 14.5) — only meaningful when VatScheme is FlatRate.</summary>
+    public decimal FlatRatePercent { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

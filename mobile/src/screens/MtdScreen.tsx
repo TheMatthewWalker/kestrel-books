@@ -30,6 +30,8 @@ function timezone(): string {
 export default function MtdScreen({ route }: any) {
   const { businessId } = route.params;
   const [status, setStatus] = useState<any | null>(null);
+  const [scheme, setScheme] = useState<any | null>(null);
+  const [ratePct, setRatePct] = useState('');
   const [vrn, setVrn] = useState('');
   const [nino, setNino] = useState('');
   const [obligations, setObligations] = useState<any[] | null>(null);
@@ -48,6 +50,9 @@ export default function MtdScreen({ route }: any) {
       if (r.data.connected && r.data.vrn) loadObligations();
     }).catch(e => Alert.alert('Error', errorMessage(e)));
     api.get(`/mtd/businesses/${businessId}/vat/submissions`).then(r => setSubmissions(r.data)).catch(() => {});
+    api.get(`/mtd/businesses/${businessId}/vat-scheme`)
+      .then(r => { setScheme(r.data); setRatePct(String(r.data.flatRatePercent || '')); })
+      .catch(() => {});
   }, [businessId]);
   useFocusEffect(load);
 
@@ -186,6 +191,36 @@ export default function MtdScreen({ route }: any) {
 
   return (
     <Screen>
+      <Text style={type.title}>VAT scheme</Text>
+      <Text style={[type.body, { marginTop: spacing.xs, color: colors.muted }]}>
+        {scheme?.scheme === 1 ? 'Cash accounting — VAT follows payment dates.'
+          : scheme?.scheme === 2 ? `Flat rate ${scheme?.flatRatePercent}% — box 1 is a % of VAT-inclusive turnover received; no input VAT recovery.`
+          : 'Standard (accrual) — VAT follows invoice dates.'}
+      </Text>
+      <View style={{ flexDirection: 'row', gap: spacing.s, marginTop: spacing.s, flexWrap: 'wrap' }}>
+        {[[0, 'Standard'], [1, 'Cash'], [2, 'Flat rate']].map(([v, label]) => (
+          <Text key={String(v)}
+            onPress={async () => {
+              try {
+                const r = await api.put(`/mtd/businesses/${businessId}/vat-scheme`,
+                  { scheme: v, flatRatePercent: v === 2 ? parseFloat(ratePct) || 0 : 0 });
+                setScheme(r.data);
+              } catch (e) { Alert.alert('Error', errorMessage(e)); }
+            }}
+            style={{
+              paddingVertical: 6, paddingHorizontal: 12, borderRadius: 6, overflow: 'hidden', fontSize: 13,
+              backgroundColor: scheme?.scheme === v ? colors.ink : colors.badgeDraft,
+              color: scheme?.scheme === v ? '#fff' : colors.ink, fontWeight: '600',
+            }}>{label as string}</Text>
+        ))}
+      </View>
+      {scheme?.scheme !== 2 && (
+        <View>
+          <Label>Flat rate % (set before choosing Flat rate)</Label>
+          <Input value={ratePct} onChangeText={setRatePct} keyboardType="decimal-pad" placeholder="e.g. 14.5" />
+        </View>
+      )}
+
       {!status.connected ? (
         <>
           <Text style={type.body}>Connect this client's Government Gateway account to HMRC.</Text>

@@ -127,4 +127,9 @@ public class MoneyTransaction
     public Guid? JournalEntryId { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
+    public SalesInvoice? SalesInvoice { get; set; }
+    public PurchaseInvoice? PurchaseInvoice { get; set; }
+    public SalesCreditNote? SalesCreditNote { get; set; }
+    public PurchaseCreditNote? PurchaseCreditNote { get; set; }
 }

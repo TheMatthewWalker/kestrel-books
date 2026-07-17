@@ -227,4 +227,28 @@ public class MtdController : ControllerBase
         var (code, body) = await _hmrc.SendAsync(businessId, HttpMethod.Post, path, payload, ClientIp());
         return StatusCode(code, body);
     }
+
+    public record VatSchemeRequest(VatScheme Scheme, decimal FlatRatePercent);
+
+    [HttpGet("vat-scheme")]
+    public async Task<IActionResult> GetVatScheme(Guid businessId)
+    {
+        await _access.EnsureAccessAsync(User, businessId);
+        var b = await _db.Businesses.FirstAsync(x => x.Id == businessId);
+        return Ok(new { scheme = b.VatScheme, flatRatePercent = b.FlatRatePercent });
+    }
+
+    /// <summary>Accountant+: the scheme changes how every subsequent return is computed.</summary>
+    [HttpPut("vat-scheme")]
+    public async Task<IActionResult> SetVatScheme(Guid businessId, VatSchemeRequest req)
+    {
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Accountant);
+        if (req.Scheme == VatScheme.FlatRate && (req.FlatRatePercent <= 0 || req.FlatRatePercent >= 30))
+            return BadRequest(new { error = "Flat rate percentage must be between 0 and 30 (check your trade sector rate on gov.uk)." });
+        var b = await _db.Businesses.FirstAsync(x => x.Id == businessId);
+        b.VatScheme = req.Scheme;
+        b.FlatRatePercent = req.Scheme == VatScheme.FlatRate ? req.FlatRatePercent : 0;
+        await _db.SaveChangesAsync();
+        return Ok(new { scheme = b.VatScheme, flatRatePercent = b.FlatRatePercent });
+    }
 }
