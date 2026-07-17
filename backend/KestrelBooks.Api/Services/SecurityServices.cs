@@ -46,7 +46,7 @@ public class SmtpEmailSender : IEmailSender
             {
                 var ms = new MemoryStream(a.Content);
                 streams.Add(ms);
-                msg.Attachments.Add(new Attachment(ms, a.FileName, a.ContentType));
+                msg.Attachments.Add(new System.Net.Mail.Attachment(ms, a.FileName, a.ContentType));
             }
             await client.SendMailAsync(msg);
         }
