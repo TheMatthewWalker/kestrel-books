@@ -21,7 +21,7 @@ export default function AgedScreen({ route, navigation }: any) {
   const openStatement = async (contactId: string) => {
     try {
       const r = await api.get(`/businesses/${businessId}/reports/customer-statement/${contactId}`);
-      setStatement(r.data);
+      setStatement({ ...r.data, contactId });
     } catch (e) { Alert.alert('Error', errorMessage(e)); }
   };
 
@@ -44,9 +44,13 @@ export default function AgedScreen({ route, navigation }: any) {
           ))}
         </View>
         <LedgerRow left="Total due" amount={gbp(statement.totalDue)} amountColor={colors.debit} />
-        <Text style={{ color: colors.muted, fontSize: 12, marginTop: spacing.s }}>
-          PDF statements for emailing arrive with invoice PDFs (roadmap 4.6).
-        </Text>
+        <Button title="Email statement PDF to customer"
+          onPress={async () => {
+            try {
+              const r = await api.post(`/businesses/${businessId}/reports/customer-statement/${statement.contactId}/email`);
+              Alert.alert('Sent', `Statement emailed to ${r.data.sentTo}.`);
+            } catch (e) { Alert.alert('Error', errorMessage(e)); }
+          }} />
         <Button kind="ghost" title="Back to ageing" onPress={() => setStatement(null)} />
       </Screen>
     );

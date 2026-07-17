@@ -20,9 +20,11 @@ public class InvoicesController : ControllerBase
     private readonly AppDbContext _db;
     private readonly AccessService _access;
     private readonly DocumentPostingService _docs;
-    public InvoicesController(AppDbContext db, AccessService access, DocumentPostingService docs)
+    private readonly PdfService _pdf;
+    private readonly IEmailSender _email;
+    public InvoicesController(AppDbContext db, AccessService access, DocumentPostingService docs, PdfService pdf, IEmailSender email)
     {
-        _db = db; _access = access; _docs = docs;
+        _db = db; _access = access; _docs = docs; _pdf = pdf; _email = email;
     }
 
     // ---- Sales ----
@@ -171,5 +173,44 @@ public class InvoicesController : ControllerBase
             VatRate = l.VatRate, AccountId = l.AccountId
         }));
         DocumentPostingService.Recalculate(inv);
+    }
+
+    public record EmailInvoiceRequest(string? To, string? Message);
+
+    [HttpGet("sales-invoices/{id:guid}/pdf")]
+    public async Task<IActionResult> SalesPdf(Guid businessId, Guid id)
+    {
+        await _access.EnsureAccessAsync(User, businessId);
+        var inv = await _db.SalesInvoices.Include(i => i.Lines).Include(i => i.Customer)
+            .FirstOrDefaultAsync(i => i.Id == id && i.BusinessId == businessId);
+        if (inv is null) return NotFound();
+        var business = await _db.Businesses.FirstAsync(b => b.Id == businessId);
+        var bytes = _pdf.SalesInvoicePdf(business, inv.Customer, inv);
+        return File(bytes, "application/pdf", $"{inv.Number}.pdf");
+    }
+
+    /// <summary>Emails the invoice PDF to the customer (or an override address).
+    /// With SMTP unconfigured, the dev fallback logs instead of sending.</summary>
+    [HttpPost("sales-invoices/{id:guid}/email")]
+    public async Task<IActionResult> SalesEmail(Guid businessId, Guid id, EmailInvoiceRequest req)
+    {
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
+        var inv = await _db.SalesInvoices.Include(i => i.Lines).Include(i => i.Customer)
+            .FirstOrDefaultAsync(i => i.Id == id && i.BusinessId == businessId);
+        if (inv is null) return NotFound();
+        if (inv.Status != DocumentStatus.Posted)
+            return BadRequest(new { error = "Post the invoice before sending it." });
+        var to = req.To ?? inv.Customer.Email;
+        if (string.IsNullOrEmpty(to))
+            return BadRequest(new { error = "The customer has no email address — add one or supply an override." });
+
+        var business = await _db.Businesses.FirstAsync(b => b.Id == businessId);
+        var bytes = _pdf.SalesInvoicePdf(business, inv.Customer, inv);
+        var body = req.Message ??
+            $"Please find attached invoice {inv.Number} for £{inv.GrossTotal:N2}, due {inv.DueDate:dd MMM yyyy}.\n\n" +
+            $"Kind regards,\n{business.Name}";
+        await _email.SendAsync(to, $"Invoice {inv.Number} from {business.Name}", body,
+            new[] { new EmailAttachment($"{inv.Number}.pdf", bytes, "application/pdf") });
+        return Ok(new { sentTo = to });
     }
 }

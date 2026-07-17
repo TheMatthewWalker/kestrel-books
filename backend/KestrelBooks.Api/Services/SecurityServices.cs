@@ -16,9 +16,11 @@ public static class Hashing
 
 // ---------------- Email ----------------
 
+public record EmailAttachment(string FileName, byte[] Content, string ContentType);
+
 public interface IEmailSender
 {
-    Task SendAsync(string to, string subject, string body);
+    Task SendAsync(string to, string subject, string body, IReadOnlyList<EmailAttachment>? attachments = null);
 }
 
 /// <summary>Plain SMTP. Works with any mailbox now and with SendGrid/Mailgun later
@@ -28,7 +30,8 @@ public class SmtpEmailSender : IEmailSender
     private readonly IConfiguration _config;
     public SmtpEmailSender(IConfiguration config) => _config = config;
 
-    public async Task SendAsync(string to, string subject, string body)
+    public async Task SendAsync(string to, string subject, string body,
+        IReadOnlyList<EmailAttachment>? attachments = null)
     {
         using var client = new SmtpClient(_config["Smtp:Host"], int.Parse(_config["Smtp:Port"] ?? "587"))
         {
@@ -36,7 +39,21 @@ public class SmtpEmailSender : IEmailSender
             Credentials = new NetworkCredential(_config["Smtp:Username"], _config["Smtp:Password"]),
         };
         using var msg = new MailMessage(_config["Smtp:From"] ?? _config["Smtp:Username"]!, to, subject, body);
-        await client.SendMailAsync(msg);
+        var streams = new List<MemoryStream>();
+        try
+        {
+            foreach (var a in attachments ?? Array.Empty<EmailAttachment>())
+            {
+                var ms = new MemoryStream(a.Content);
+                streams.Add(ms);
+                msg.Attachments.Add(new Attachment(ms, a.FileName, a.ContentType));
+            }
+            await client.SendMailAsync(msg);
+        }
+        finally
+        {
+            foreach (var ms in streams) ms.Dispose();
+        }
     }
 }
 
@@ -46,9 +63,11 @@ public class LogEmailSender : IEmailSender
 {
     private readonly ILogger<LogEmailSender> _log;
     public LogEmailSender(ILogger<LogEmailSender> log) => _log = log;
-    public Task SendAsync(string to, string subject, string body)
+    public Task SendAsync(string to, string subject, string body,
+        IReadOnlyList<EmailAttachment>? attachments = null)
     {
-        _log.LogWarning("SMTP not configured — email to {To}: [{Subject}] {Body}", to, subject, body);
+        _log.LogWarning("SMTP not configured — email to {To}: [{Subject}] {Body} (+{Count} attachment(s))",
+            to, subject, body, attachments?.Count ?? 0);
         return Task.CompletedTask;
     }
 }
