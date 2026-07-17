@@ -230,7 +230,7 @@ public class MtdController : ControllerBase
 
     public record VatSchemeRequest(VatScheme Scheme, decimal FlatRatePercent);
 
-    [HttpGet("vat-scheme")]
+    [HttpGet("businesses/{businessId:guid}/vat-scheme")]
     public async Task<IActionResult> GetVatScheme(Guid businessId)
     {
         await _access.EnsureAccessAsync(User, businessId);
@@ -239,7 +239,7 @@ public class MtdController : ControllerBase
     }
 
     /// <summary>Accountant+: the scheme changes how every subsequent return is computed.</summary>
-    [HttpPut("vat-scheme")]
+    [HttpPut("businesses/{businessId:guid}/vat-scheme")]
     public async Task<IActionResult> SetVatScheme(Guid businessId, VatSchemeRequest req)
     {
         await _access.EnsureAccessAsync(User, businessId, BusinessRole.Accountant);
