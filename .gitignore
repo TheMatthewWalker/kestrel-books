@@ -7,3 +7,5 @@ appsettings.Development.json
 .env
 backend/KestrelBooks.Api/Storage/
 **/dp-keys/
+web/node_modules/
+backend/KestrelBooks.Api/wwwroot/

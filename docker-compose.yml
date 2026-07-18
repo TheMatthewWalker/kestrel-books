@@ -14,7 +14,9 @@ services:
       retries: 10
 
   api:
-    build: ./backend/KestrelBooks.Api
+    build:
+      context: .
+      dockerfile: backend/KestrelBooks.Api/Dockerfile
     depends_on:
       db:
         condition: service_healthy

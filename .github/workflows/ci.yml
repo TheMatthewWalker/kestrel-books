@@ -16,11 +16,26 @@ jobs:
       - name: Test
         run: dotnet test backend/KestrelBooks.Tests --logger "console;verbosity=normal"
 
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: web/package-lock.json
+      - name: Build web app
+        working-directory: web
+        run: |
+          npm ci --no-audit --no-fund
+          npm run build
+
   docker:
     # Build and publish the production image on every push to main.
     # Deployment pulls ghcr.io/thematthewwalker/kestrel-books:latest
     # (see docker-compose.prod.yml and docs/OPERATIONS.md).
-    needs: test
+    needs: [test, web]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
@@ -35,7 +50,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: backend/KestrelBooks.Api
+          context: .
+          file: backend/KestrelBooks.Api/Dockerfile
           push: true
           tags: |
             ghcr.io/thematthewwalker/kestrel-books:latest

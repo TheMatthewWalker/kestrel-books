@@ -169,6 +169,15 @@ var app = builder.Build();
 app.UseForwardedHeaders();
 app.UseSerilogRequestLogging();
 
+// Serve the built web app (web/ → wwwroot via `npm run build`). Guarded so the
+// API runs identically when no web build exists (mobile-only / dev).
+var hasWebApp = File.Exists(Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html"));
+if (hasWebApp)
+{
+    app.UseDefaultFiles();
+    app.UseStaticFiles();
+}
+
 // Apply any pending EF Core migrations on startup (creates the database if absent).
 // Generate migrations with: dotnet ef migrations add <Name>   (see README).
 using (var scope = app.Services.CreateScope())
@@ -204,4 +213,8 @@ app.MapHealthChecks("/health/ready");
 app.UseMiddleware<TenantMiddleware>();
 
 app.MapControllers();
+
+// SPA fallback for client-side routes — everything except /api and real files.
+if (hasWebApp)
+    app.MapFallbackToFile("{*path:regex(^(?!api/).*$)}", "index.html");
 app.Run();
