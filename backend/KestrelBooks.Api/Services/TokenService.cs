@@ -66,6 +66,17 @@ public class TokenService
         return (pair, user, false);
     }
 
+    public async Task RevokeOneAsync(string rawToken)
+    {
+        var hash = Hashing.Sha256(rawToken);
+        var stored = await _db.RefreshTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
+        if (stored is { RevokedAtUtc: null })
+        {
+            stored.RevokedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+    }
+
     public async Task RevokeAllAsync(Guid userId)
     {
         var tokens = await _db.RefreshTokens

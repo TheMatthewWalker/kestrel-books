@@ -40,6 +40,34 @@ public class AuthController : ControllerBase
 
     private string? Ip() => HttpContext.Connection.RemoteIpAddress?.ToString();
 
+    private bool UseCookies => Request.Headers["X-Use-Cookies"] == "1"
+                               || Request.Cookies.ContainsKey(RefreshCookie);
+    private const string RefreshCookie = "kb_refresh";
+
+    /// <summary>Web hardening: the refresh token never touches JavaScript.
+    /// httpOnly blocks XSS reads; SameSite=Strict blocks cross-site sends;
+    /// the /api/auth path keeps it off every other request.</summary>
+    private void SetRefreshCookie(string rawToken) =>
+        Response.Cookies.Append(RefreshCookie, rawToken, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = Request.IsHttps,
+            SameSite = SameSiteMode.Strict,
+            Path = "/api/auth",
+            Expires = DateTimeOffset.UtcNow.AddDays(30),
+        });
+
+    private void ClearRefreshCookie() =>
+        Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/api/auth" });
+
+    private AuthResponse Respond(TokenPair pair, AppUser user)
+    {
+        if (!UseCookies)
+            return new AuthResponse(pair.AccessToken, pair.RefreshToken, user.Email!, user.DisplayName);
+        SetRefreshCookie(pair.RefreshToken);
+        return new AuthResponse(pair.AccessToken, "", user.Email!, user.DisplayName);
+    }
+
     private void Audit(AuthEventType e, AppUser? user, string? email = null, string? detail = null) =>
         _db.AuthEvents.Add(new AuthEvent
         {
@@ -57,7 +85,7 @@ public class AuthController : ControllerBase
         var pair = await _tokens.IssueAsync(user, Ip());
         Audit(AuthEventType.LoginSuccess, user, detail: "register");
         await _db.SaveChangesAsync();
-        return new AuthResponse(pair.AccessToken, pair.RefreshToken, user.Email!, user.DisplayName);
+        return Respond(pair, user);
     }
 
     [HttpPost("login")]
@@ -93,7 +121,7 @@ public class AuthController : ControllerBase
         var pair = await _tokens.IssueAsync(user, Ip());
         Audit(AuthEventType.LoginSuccess, user);
         await _db.SaveChangesAsync();
-        return Ok(new AuthResponse(pair.AccessToken, pair.RefreshToken, user.Email!, user.DisplayName));
+        return Ok(Respond(pair, user));
     }
 
     [HttpPost("mfa/verify")]
@@ -126,7 +154,7 @@ public class AuthController : ControllerBase
         var pair = await _tokens.IssueAsync(user, Ip());
         Audit(AuthEventType.LoginSuccess, user, detail: $"mfa:{req.Method}");
         await _db.SaveChangesAsync();
-        return Ok(new AuthResponse(pair.AccessToken, pair.RefreshToken, user.Email!, user.DisplayName));
+        return Ok(Respond(pair, user));
     }
 
     /// <summary>Email-fallback MFA: sends a 6-digit code to the account email during an active challenge.</summary>
@@ -145,19 +173,35 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(RefreshRequest req)
+    public async Task<IActionResult> Refresh(RefreshRequest? req)
     {
-        var (pair, user, reuse) = await _tokens.RefreshAsync(req.RefreshToken, Ip());
+        var raw = string.IsNullOrEmpty(req?.RefreshToken)
+            ? Request.Cookies[RefreshCookie] ?? ""
+            : req.RefreshToken;
+        if (string.IsNullOrEmpty(raw)) return Unauthorized(new { error = "No refresh token." });
+        var (pair, user, reuse) = await _tokens.RefreshAsync(raw, Ip());
         if (reuse)
         {
+            ClearRefreshCookie();
             Audit(AuthEventType.TokenReuseDetected, user);
             await _db.SaveChangesAsync();
             return Unauthorized(new { error = "Session invalidated — sign in again." });
         }
-        if (pair is null) return Unauthorized(new { error = "Invalid refresh token." });
+        if (pair is null) { ClearRefreshCookie(); return Unauthorized(new { error = "Invalid refresh token." }); }
         Audit(AuthEventType.TokenRefreshed, user);
         await _db.SaveChangesAsync();
-        return Ok(new AuthResponse(pair.AccessToken, pair.RefreshToken, user!.Email!, user.DisplayName));
+        return Ok(Respond(pair, user!));
+    }
+
+    /// <summary>Web sign-out: revokes the cookie's token server-side and clears the cookie.</summary>
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        var raw = Request.Cookies[RefreshCookie];
+        if (!string.IsNullOrEmpty(raw))
+            await _tokens.RevokeOneAsync(raw);
+        ClearRefreshCookie();
+        return Ok(new { signedOut = true });
     }
 
     [Authorize]
