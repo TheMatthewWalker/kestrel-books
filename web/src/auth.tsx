@@ -6,6 +6,7 @@ type AuthState = {
   signedIn: boolean;
   displayName: string;
   signIn: (email: string, password: string) => Promise<SignInResult>;
+  register: (email: string, password: string, displayName: string) => Promise<void>;
   verifyMfa: (mfaToken: string, code: string, method: 'totp' | 'email') => Promise<void>;
   requestEmailCode: (mfaToken: string) => Promise<void>;
   signOut: () => void;
@@ -32,6 +33,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       signedIn,
       displayName,
+      register: async (email, password, displayName) => {
+        store((await api.post('/auth/register', { email, password, displayName })).data);
+      },
       signIn: async (email, password) => {
         const r = await api.post('/auth/login', { email, password });
         if (r.data.mfaRequired) return { mfaRequired: true, mfaToken: r.data.mfaToken };

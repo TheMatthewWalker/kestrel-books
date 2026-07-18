@@ -3,7 +3,9 @@ import { useAuth } from '../auth';
 import { errorMessage } from '../api';
 
 export default function Login() {
-  const { signIn, verifyMfa, requestEmailCode } = useAuth();
+  const { signIn, register, verifyMfa, requestEmailCode } = useAuth();
+  const [mode, setMode] = useState<'signin' | 'register'>('signin');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mfaToken, setMfaToken] = useState('');
@@ -16,6 +18,7 @@ export default function Login() {
     setErr(''); setBusy(true);
     try {
       if (mfaToken) await verifyMfa(mfaToken, code, 'totp');
+      else if (mode === 'register') await register(email, password, name);
       else {
         const r = await signIn(email, password);
         if (r.mfaRequired) setMfaToken(r.mfaToken!);
@@ -43,12 +46,22 @@ export default function Login() {
           </>
         ) : (
           <>
+            {mode === 'register' && (
+              <>
+                <label>Your name</label>
+                <input value={name} onChange={e => setName(e.target.value)} />
+              </>
+            )}
             <label>Email</label>
             <input value={email} onChange={e => setEmail(e.target.value)} autoFocus />
             <label>Password</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} />
             <button className="btn" style={{ marginTop: 18, width: '100%' }} disabled={busy}>
-              Sign in
+              {mode === 'register' ? 'Create account' : 'Sign in'}
+            </button>
+            <button type="button" className="btn ghost" style={{ marginTop: 8, width: '100%' }}
+              onClick={() => setMode(mode === 'register' ? 'signin' : 'register')}>
+              {mode === 'register' ? 'Have an account? Sign in' : 'New here? Create an account'}
             </button>
           </>
         )}
