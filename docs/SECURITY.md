@@ -53,3 +53,35 @@ tenant data.
 `IEmailSender` → SMTP (`Smtp` config section; SendGrid/Mailgun both expose
 SMTP so a provider switch is config-only). Unconfigured, a logging fallback
 prints codes to the server console for development.
+
+
+## Web client authentication (v2.1)
+
+The web app uses a different token-handling model from mobile, because browsers
+face XSS in a way native apps do not:
+
+| | Mobile (React Native) | Web (React) |
+|---|---|---|
+| Access token | SecureStore, sent as Bearer | **Module memory only** — never persisted |
+| Refresh token | SecureStore | **httpOnly cookie** `kb_refresh`, `Secure`, `SameSite=Strict`, `Path=/api/auth` |
+| Session restore | Read from SecureStore | One silent `POST /api/auth/refresh` on load (cookie travels automatically) |
+| Sign out | Discard tokens | `POST /api/auth/logout` revokes the token server-side and clears the cookie |
+
+A client opts into cookie mode by sending `X-Use-Cookies: 1` on register/login/
+mfa-verify/refresh. The server then omits the refresh token from the JSON body
+entirely and sets it as a cookie instead.
+
+Why this shape:
+- **httpOnly** means injected JavaScript cannot read the refresh token — the
+  high-value credential is out of reach of XSS.
+- **SameSite=Strict** means the browser will not attach it to cross-site
+  requests, which blocks CSRF against the refresh endpoint.
+- **Path=/api/auth** means it is not sent on ordinary API calls, so it is not
+  sitting in every request's headers waiting to leak through a log or proxy.
+- The access token is short-lived (60 min) and held only in memory, so a page
+  reload loses it and the app silently re-mints one from the cookie. Nothing
+  durable and sensitive is left in `localStorage`, which any script can read.
+
+Rotation and reuse detection are unchanged: each refresh issues a new token and
+revokes the old one; presenting a revoked token kills the whole family and, in
+cookie mode, clears the cookie so the browser stops replaying it.
