@@ -9,7 +9,8 @@ namespace KestrelBooks.Api.Controllers;
 
 public record MoneyRequest(MoneyDirection Direction, DateOnly Date, string Reference, decimal Amount,
     Guid BankAccountId, Guid? CustomerId, Guid? VendorId,
-    Guid? SalesInvoiceId, Guid? PurchaseInvoiceId, Guid? DirectAccountId, string? Notes);
+    Guid? SalesInvoiceId, Guid? PurchaseInvoiceId, Guid? DirectAccountId, string? Notes,
+    Guid? SalesCreditNoteId = null, Guid? PurchaseCreditNoteId = null);
 
 [ApiController]
 [Authorize]
@@ -72,6 +73,7 @@ public class MoneyController : ControllerBase
         tx.Amount = req.Amount; tx.BankAccountId = req.BankAccountId;
         tx.CustomerId = req.CustomerId; tx.VendorId = req.VendorId;
         tx.SalesInvoiceId = req.SalesInvoiceId; tx.PurchaseInvoiceId = req.PurchaseInvoiceId;
+        tx.SalesCreditNoteId = req.SalesCreditNoteId; tx.PurchaseCreditNoteId = req.PurchaseCreditNoteId;
         tx.DirectAccountId = req.DirectAccountId; tx.Notes = req.Notes;
     }
 }

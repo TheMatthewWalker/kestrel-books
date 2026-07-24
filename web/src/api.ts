@@ -1,25 +1,28 @@
 import axios from 'axios';
 
-// Same-origin in production (served from wwwroot); Vite proxy in dev.
+// Web auth hardening: the ACCESS token lives only in this module's memory (never
+// localStorage — XSS cannot exfiltrate what isn't stored). The REFRESH token
+// lives only in an httpOnly cookie the server sets; JavaScript never sees it.
+// Page reloads restore the session via one silent cookie-refresh.
+let accessToken: string | null = null;
+export const setAccessToken = (t: string | null) => { accessToken = t; };
+
 export const api = axios.create({ baseURL: '/api' });
 
 let onExpired: (() => void) | null = null;
 export const setSessionExpiredHandler = (fn: () => void) => { onExpired = fn; };
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('accessToken');
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (accessToken) config.headers.Authorization = `Bearer ${accessToken}`;
   return config;
 });
 
 let refreshing: Promise<boolean> | null = null;
-async function tryRefresh(): Promise<boolean> {
-  const refreshToken = localStorage.getItem('refreshToken');
-  if (!refreshToken) return false;
+export async function tryRefresh(): Promise<boolean> {
   try {
-    const r = await axios.post('/api/auth/refresh', { refreshToken });
-    localStorage.setItem('accessToken', r.data.accessToken);
-    localStorage.setItem('refreshToken', r.data.refreshToken);
+    const r = await axios.post('/api/auth/refresh', {}, { headers: { 'X-Use-Cookies': '1' } });
+    accessToken = r.data.accessToken;
+    localStorage.setItem('displayName', r.data.displayName ?? '');
     return true;
   } catch { return false; }
 }
@@ -34,11 +37,10 @@ api.interceptors.response.use(
       const ok = await refreshing;
       refreshing = null;
       if (ok) {
-        original.headers.Authorization = `Bearer ${localStorage.getItem('accessToken')}`;
+        original.headers.Authorization = `Bearer ${accessToken}`;
         return api(original);
       }
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
+      accessToken = null;
       onExpired?.();
     }
     return Promise.reject(error);
@@ -52,3 +54,14 @@ export const errorMessage = (e: unknown): string => {
 
 export const gbp = (v: number) =>
   new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(v ?? 0);
+
+export const today = () => new Date().toISOString().slice(0, 10);
+
+/** Authenticated file download (an <a href> can't carry the bearer token). */
+export async function downloadFile(url: string, fileName: string) {
+  const r = await api.get(url, { responseType: 'blob' });
+  const href = URL.createObjectURL(r.data);
+  const a = document.createElement('a');
+  a.href = href; a.download = fileName; a.click();
+  URL.revokeObjectURL(href);
+}
