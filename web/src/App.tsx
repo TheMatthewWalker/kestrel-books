@@ -11,6 +11,11 @@ import Journals from './pages/Journals';
 import CreditNotes from './pages/CreditNotes';
 import Money from './pages/Money';
 import Banking from './pages/Banking';
+import Vat from './pages/Vat';
+import Opening from './pages/Opening';
+import Periods from './pages/Periods';
+import Users from './pages/Users';
+import Recurring from './pages/Recurring';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -32,6 +37,11 @@ export default function App() {
           <Route path="banking" element={<Banking />} />
           <Route path="journals" element={<Journals />} />
           <Route path="contacts" element={<Contacts />} />
+          <Route path="recurring" element={<Recurring />} />
+          <Route path="vat" element={<Vat />} />
+          <Route path="opening" element={<Opening />} />
+          <Route path="periods" element={<Periods />} />
+          <Route path="users" element={<Users />} />
         </Route>
       </Route>
     </Routes>
@@ -62,7 +72,8 @@ function Shell() {
 const TABS: [string, string][] = [
   ['reports', 'Reports'], ['aged', 'Aged'], ['invoices', 'Invoices'],
   ['credit-notes', 'Credit notes'], ['money', 'Money'], ['banking', 'Banking'],
-  ['journals', 'Journals'], ['contacts', 'Contacts'],
+  ['journals', 'Journals'], ['contacts', 'Contacts'], ['recurring', 'Recurring'],
+  ['vat', 'VAT'], ['opening', 'Opening'], ['periods', 'Periods'], ['users', 'Users'],
 ];
 
 function ClientShell() {
