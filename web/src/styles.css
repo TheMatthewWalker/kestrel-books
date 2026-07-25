@@ -50,3 +50,13 @@ input, select { width: 100%; padding: 9px 11px; border: 1px solid var(--rule); b
 .err { color: var(--debit); font-size: 13px; margin-top: 10px; }
 .row { display: flex; gap: 10px; align-items: center; }
 .spacer { flex: 1; }
+
+/* Client sub-navigation: grouped so eighteen modules stay findable. */
+.clienttabs { display: flex; flex-wrap: wrap; gap: 6px 22px; margin-bottom: 20px;
+  padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
+.tabgroup { display: flex; flex-direction: column; gap: 2px; }
+.tabgroup-label { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+.tabgroup a { font-size: 13px; padding: 2px 0; color: var(--muted); }
+.tabgroup a:hover { color: var(--ink); }
+.tabgroup a.active { color: var(--ink); font-weight: 700; }
+.tabgroup { flex-direction: row; align-items: baseline; gap: 10px; }

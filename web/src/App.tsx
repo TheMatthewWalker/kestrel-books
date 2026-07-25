@@ -16,6 +16,11 @@ import Opening from './pages/Opening';
 import Periods from './pages/Periods';
 import Users from './pages/Users';
 import Recurring from './pages/Recurring';
+import Items from './pages/Items';
+import Inventory from './pages/Inventory';
+import Assets from './pages/Assets';
+import Production from './pages/Production';
+import Receipts from './pages/Receipts';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -42,6 +47,11 @@ export default function App() {
           <Route path="opening" element={<Opening />} />
           <Route path="periods" element={<Periods />} />
           <Route path="users" element={<Users />} />
+          <Route path="items" element={<Items />} />
+          <Route path="inventory" element={<Inventory />} />
+          <Route path="assets" element={<Assets />} />
+          <Route path="production" element={<Production />} />
+          <Route path="receipts" element={<Receipts />} />
         </Route>
       </Route>
     </Routes>
@@ -69,20 +79,28 @@ function Shell() {
   );
 }
 
-const TABS: [string, string][] = [
-  ['reports', 'Reports'], ['aged', 'Aged'], ['invoices', 'Invoices'],
-  ['credit-notes', 'Credit notes'], ['money', 'Money'], ['banking', 'Banking'],
-  ['journals', 'Journals'], ['contacts', 'Contacts'], ['recurring', 'Recurring'],
-  ['vat', 'VAT'], ['opening', 'Opening'], ['periods', 'Periods'], ['users', 'Users'],
+const TAB_GROUPS: [string, [string, string][]][] = [
+  ['Review', [['reports', 'Reports'], ['aged', 'Ageing'], ['journals', 'Journals']]],
+  ['Sales & purchases', [['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
+    ['recurring', 'Recurring'], ['contacts', 'Contacts']]],
+  ['Money', [['money', 'Money'], ['banking', 'Banking'], ['receipts', 'Receipts']]],
+  ['Stock & assets', [['items', 'Items'], ['inventory', 'Inventory'],
+    ['production', 'Production'], ['assets', 'Assets']]],
+  ['Compliance', [['vat', 'VAT'], ['periods', 'Periods'], ['opening', 'Opening'], ['users', 'Users']]],
 ];
 
 function ClientShell() {
   const { businessId } = useParams();
   return (
     <div>
-      <nav style={{ marginBottom: 18, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-        {TABS.map(([path, label]) =>
-          <NavLink key={path} to={`/clients/${businessId}/${path}`}>{label}</NavLink>)}
+      <nav className="clienttabs">
+        {TAB_GROUPS.map(([group, tabs]) => (
+          <div key={group} className="tabgroup">
+            <span className="tabgroup-label">{group}</span>
+            {tabs.map(([path, label]) =>
+              <NavLink key={path} to={`/clients/${businessId}/${path}`}>{label}</NavLink>)}
+          </div>
+        ))}
       </nav>
       <Outlet />
     </div>
