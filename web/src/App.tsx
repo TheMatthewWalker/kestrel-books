@@ -22,6 +22,7 @@ import Assets from './pages/Assets';
 import Production from './pages/Production';
 import Receipts from './pages/Receipts';
 import PeriodEnd from './pages/PeriodEnd';
+import Audit from './pages/Audit';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -48,6 +49,7 @@ export default function App() {
           <Route path="opening" element={<Opening />} />
           <Route path="periods" element={<Periods />} />
           <Route path="period-end" element={<PeriodEnd />} />
+          <Route path="audit" element={<Audit />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
           <Route path="inventory" element={<Inventory />} />
@@ -89,7 +91,8 @@ const TAB_GROUPS: [string, [string, string][]][] = [
   ['Money', [['money', 'Money'], ['banking', 'Banking'], ['receipts', 'Receipts']]],
   ['Stock & assets', [['items', 'Items'], ['inventory', 'Inventory'],
     ['production', 'Production'], ['assets', 'Assets']]],
-  ['Compliance', [['vat', 'VAT'], ['periods', 'Periods'], ['opening', 'Opening'], ['users', 'Users']]],
+  ['Compliance', [['vat', 'VAT'], ['periods', 'Periods'], ['opening', 'Opening'],
+    ['users', 'Users'], ['audit', 'Audit trail']]],
 ];
 
 function ClientShell() {

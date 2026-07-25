@@ -51,6 +51,7 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<RecurringInvoice> RecurringInvoices => Set<RecurringInvoice>();
     public DbSet<PeriodEndSchedule> PeriodEndSchedules => Set<PeriodEndSchedule>();
     public DbSet<PeriodEndPosting> PeriodEndPostings => Set<PeriodEndPosting>();
+    public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<RecurringInvoiceLine> RecurringInvoiceLines => Set<RecurringInvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -160,6 +161,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<PeriodEndSchedule>().HasMany(x => x.Postings).WithOne()
             .HasForeignKey(x => x.PeriodEndScheduleId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<PeriodEndSchedule>().HasIndex(x => new { x.BusinessId, x.NextRunDate });
+        b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId });
+        b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.AtUtc });
         b.Entity<PeriodEndSchedule>().Ignore(x => x.IsSpread).Ignore(x => x.MonthlyAmount);
         b.Entity<RecurringInvoiceLine>().Property(x => x.Quantity).HasPrecision(18, 3);
         b.Entity<RecurringInvoiceLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
@@ -189,5 +192,26 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<Attachment>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<RecurringInvoice>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<PeriodEndSchedule>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<AuditEntry>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+    }
+
+    /// <summary>
+    /// The audit trail is captured here rather than in each service, so a service
+    /// that forgets — or a future one that does not know it should — is still
+    /// covered. Entries are added to this same SaveChanges, so the change and its
+    /// audit record commit together or not at all.
+    /// </summary>
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var audits = Services.AuditBuilder.Collect(ChangeTracker, _tenant.CurrentUserId, _tenant.CurrentUserName);
+        if (audits.Count > 0) AuditEntries.AddRange(audits);
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override int SaveChanges()
+    {
+        var audits = Services.AuditBuilder.Collect(ChangeTracker, _tenant.CurrentUserId, _tenant.CurrentUserName);
+        if (audits.Count > 0) AuditEntries.AddRange(audits);
+        return base.SaveChanges();
     }
 }

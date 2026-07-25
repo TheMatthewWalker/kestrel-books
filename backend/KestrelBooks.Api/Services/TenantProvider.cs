@@ -11,8 +11,19 @@ namespace KestrelBooks.Api.Services;
 /// ever see the current tenant's rows — a forgotten Where clause now
 /// fails closed (returns nothing) instead of leaking another client's books.
 /// </summary>
+/// <summary>
+/// Carries the current tenant and acting user for the lifetime of a request.
+/// The user is used by the audit trail; the middleware sets both.
+/// </summary>
 public class TenantProvider
 {
+    public Guid CurrentUserId { get; private set; }
+    public string? CurrentUserName { get; private set; }
+    public void SetUser(Guid userId, string? userName)
+    {
+        CurrentUserId = userId; CurrentUserName = userName;
+    }
+
     public Guid? BusinessId { get; private set; }
     public BusinessRole? Role { get; private set; }
 
@@ -36,6 +47,12 @@ public class TenantMiddleware
 
     public async Task InvokeAsync(HttpContext ctx, TenantProvider tenant, AppDbContext db)
     {
+        // Record the acting user for every authenticated request, tenant-scoped or
+        // not — the audit trail needs it regardless of which controller is called.
+        if (ctx.User.Identity?.IsAuthenticated == true)
+            tenant.SetUser(AccessService.UserId(ctx.User),
+                ctx.User.Identity.Name ?? ctx.User.FindFirst("email")?.Value);
+
         var raw = ctx.GetRouteValue("businessId")?.ToString();
         if (!string.IsNullOrEmpty(raw) && Guid.TryParse(raw, out var businessId))
         {
