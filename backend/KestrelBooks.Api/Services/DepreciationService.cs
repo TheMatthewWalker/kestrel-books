@@ -106,4 +106,64 @@ public class DepreciationService
         await _db.SaveChangesAsync();
         return journal;
     }
+
+    /// <summary>
+    /// Takes an asset off the books. The four-legged posting removes what the
+    /// balance sheet holds and recognises the difference in the P&amp;L:
+    ///   Dr Accumulated depreciation   (clear what has been charged)
+    ///   Cr Cost                       (clear the original cost)
+    ///   Dr Proceeds account           (bank, or debtor if sold on credit)
+    ///   Cr/Dr Profit or loss on disposal (the balancing figure)
+    /// Profit on disposal = proceeds − net book value. A scrapping is simply a
+    /// disposal with nil proceeds, which writes off the remaining NBV as a loss.
+    ///
+    /// Note on timing: this uses the accumulated depreciation as it stands, so
+    /// run the monthly depreciation up to the disposal month first if you want
+    /// the part-year charge included — the caller is told when that is the case.
+    /// </summary>
+    public async Task<(JournalEntry journal, decimal gainLoss, bool depreciationBehind)> DisposeAsync(
+        Guid businessId, Guid assetId, DateOnly disposalDate, decimal proceeds,
+        Guid proceedsAccountId, Guid disposalAccountId, Guid userId)
+    {
+        var asset = await _db.FixedAssets
+            .FirstOrDefaultAsync(a => a.Id == assetId && a.BusinessId == businessId)
+            ?? throw new KeyNotFoundException("Asset not found.");
+        if (asset.Status == AssetStatus.Disposed)
+            throw new InvalidOperationException("This asset has already been disposed.");
+        if (proceeds < 0)
+            throw new InvalidOperationException("Proceeds cannot be negative.");
+        if (disposalDate < asset.AcquisitionDate)
+            throw new InvalidOperationException("An asset cannot be disposed of before it was acquired.");
+
+        var nbv = asset.Cost - asset.AccumulatedDepreciation;
+        var gainLoss = decimal.Round(proceeds - nbv, 2, MidpointRounding.AwayFromZero);
+
+        // Was depreciation charged up to the month of disposal?
+        var disposalMonthStart = new DateOnly(disposalDate.Year, disposalDate.Month, 1);
+        var depreciationBehind = asset.Status == AssetStatus.InUse
+            && (asset.DepreciatedThrough is null || asset.DepreciatedThrough < disposalMonthStart);
+
+        var lines = new List<DraftLine>();
+        if (asset.AccumulatedDepreciation != 0)
+            lines.Add(new DraftLine(asset.AccumDepAccountId, asset.AccumulatedDepreciation, 0,
+                $"Remove accumulated depreciation — {asset.Code}"));
+        lines.Add(new DraftLine(asset.CostAccountId, 0, asset.Cost, $"Remove cost — {asset.Code}"));
+        if (proceeds != 0)
+            lines.Add(new DraftLine(proceedsAccountId, proceeds, 0, $"Disposal proceeds — {asset.Code}"));
+        if (gainLoss > 0)
+            lines.Add(new DraftLine(disposalAccountId, 0, gainLoss, $"Profit on disposal — {asset.Code}"));
+        else if (gainLoss < 0)
+            lines.Add(new DraftLine(disposalAccountId, -gainLoss, 0, $"Loss on disposal — {asset.Code}"));
+
+        var journal = await _posting.CreateDraftAsync(businessId, userId, disposalDate,
+            asset.Code, $"Disposal of {asset.Description}", SourceType.AssetDisposal, asset.Id, lines);
+        await _posting.PostAsync(businessId, journal.Id, userId);
+
+        asset.Status = AssetStatus.Disposed;
+        asset.DisposalDate = disposalDate;
+        asset.DisposalProceeds = proceeds;
+        asset.DisposalGainLoss = gainLoss;
+        await _db.SaveChangesAsync();
+        return (journal, gainLoss, depreciationBehind);
+    }
 }

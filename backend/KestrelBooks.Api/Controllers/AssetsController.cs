@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KestrelBooks.Api.Controllers;
 
+public record DisposeAssetRequest(DateOnly DisposalDate, decimal Proceeds,
+    Guid ProceedsAccountId, Guid DisposalAccountId);
 public record AssetRequest(string Code, string Description, string? Category, AssetStatus Status,
     DateOnly AcquisitionDate, decimal Cost, decimal ResidualValue, DepreciationMethod Method,
     int UsefulLifeMonths, decimal AnnualRatePercent, DateOnly DepreciationStart,
@@ -36,6 +38,7 @@ public class AssetsController : ControllerBase
             a.Id, a.Code, a.Description, a.Category, a.Status, a.AcquisitionDate,
             a.Cost, a.ResidualValue, a.Method, a.UsefulLifeMonths, a.AnnualRatePercent,
             a.DepreciationStart, a.DepreciatedThrough, a.AccumulatedDepreciation,
+            a.DisposalDate, a.DisposalProceeds, a.DisposalGainLoss,
             NetBookValue = a.NetBookValue,
             NextMonthlyCharge = a.Status == AssetStatus.InUse ? DepreciationService.MonthlyCharge(a) : 0
         }));
@@ -94,5 +97,26 @@ public class AssetsController : ControllerBase
         a.DepreciationStart = req.DepreciationStart;
         a.CostAccountId = req.CostAccountId; a.AccumDepAccountId = req.AccumDepAccountId;
         a.DepExpenseAccountId = req.DepExpenseAccountId; a.Notes = req.Notes;
+    }
+
+    /// <summary>Sell or scrap an asset — removes cost and accumulated depreciation
+    /// and books the profit or loss on disposal.</summary>
+    [HttpPost("{id:guid}/dispose")]
+    public async Task<IActionResult> Dispose(Guid businessId, Guid id, DisposeAssetRequest req)
+    {
+        await _access.EnsureAccessAsync(User, businessId, BusinessRole.Bookkeeper);
+        var (journal, gainLoss, behind) = await _depreciation.DisposeAsync(businessId, id,
+            req.DisposalDate, req.Proceeds, req.ProceedsAccountId, req.DisposalAccountId,
+            AccessService.UserId(User));
+        return Ok(new
+        {
+            journalNumber = journal.Number,
+            gainLoss,
+            outcome = gainLoss > 0 ? "profit" : gainLoss < 0 ? "loss" : "break-even",
+            depreciationBehind = behind,
+            warning = behind
+                ? "Depreciation had not been posted up to the disposal month, so no part-year charge is included."
+                : null,
+        });
     }
 }

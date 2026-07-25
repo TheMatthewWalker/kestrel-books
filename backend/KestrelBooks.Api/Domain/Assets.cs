@@ -31,6 +31,10 @@ public class FixedAsset
     public Guid CostAccountId { get; set; }
     public Guid AccumDepAccountId { get; set; }
     public Guid DepExpenseAccountId { get; set; }
+    /// <summary>Set when the asset leaves the business — sold, scrapped or traded in.</summary>
+    public DateOnly? DisposalDate { get; set; }
+    public decimal DisposalProceeds { get; set; }
+    public decimal DisposalGainLoss { get; set; }    // positive = profit on disposal
     public DateOnly? DisposalDate { get; set; }
     public string? Notes { get; set; }
 

@@ -12,6 +12,8 @@ export default function Assets() {
   const [accounts] = useLoad<any[]>(`/businesses/${businessId}/accounts`);
   const [showForm, setShowForm] = useState(false);
   const [runMonth, setRunMonth] = useState(today().slice(0, 7));
+  const [disposing, setDisposing] = useState<any>(null);
+  const [d, setD] = useState({ disposalDate: today(), proceeds: '', proceedsAccountId: '', disposalAccountId: '' });
   const [err, setErr] = useState('');
   const [f, setF] = useState({
     code: '', description: '', category: '', status: 1,
@@ -23,6 +25,8 @@ export default function Assets() {
 
   const assetAccounts = (accounts ?? []).filter((a: any) => a.type === 0);
   const expenseAccounts = (accounts ?? []).filter((a: any) => a.type === 4);
+  const plAccounts = (accounts ?? []).filter((a: any) => a.type === 3 || a.type === 4);
+  const proceedsAccounts = (accounts ?? []).filter((a: any) => a.isBank || a.type === 0);
 
   const save = async () => {
     setErr('');
@@ -59,6 +63,21 @@ export default function Assets() {
     try {
       const r = await api.post(`/businesses/${businessId}/assets/${asset.id}/capitalise`, {}, { params: { date } });
       alert(`Capitalised — journal ${r.data.journalNumber}. Depreciation starts from this date.`);
+      reload();
+    } catch (e) { alert(errorMessage(e)); }
+  };
+
+  const dispose = async () => {
+    try {
+      const r = await api.post(`/businesses/${businessId}/assets/${disposing.id}/dispose`, {
+        disposalDate: d.disposalDate, proceeds: parseFloat(d.proceeds) || 0,
+        proceedsAccountId: d.proceedsAccountId, disposalAccountId: d.disposalAccountId,
+      });
+      alert(`Disposed — journal ${r.data.journalNumber}. ${r.data.outcome === 'profit'
+        ? `Profit on disposal ${gbp(r.data.gainLoss)}.`
+        : r.data.outcome === 'loss' ? `Loss on disposal ${gbp(Math.abs(r.data.gainLoss))}.`
+        : 'No profit or loss.'}${r.data.warning ? `\n\n${r.data.warning}` : ''}`);
+      setDisposing(null); setD({ ...d, proceeds: '' });
       reload();
     } catch (e) { alert(errorMessage(e)); }
   };
@@ -148,6 +167,52 @@ export default function Assets() {
         </div>
       )}
 
+      {disposing && (
+        <div className="card" style={{ marginTop: 16, maxWidth: 680 }}>
+          <h2 style={{ marginTop: 0 }}>Dispose {disposing.code} — {disposing.description}</h2>
+          <div className="sub">
+            Net book value {gbp(disposing.netBookValue)} (cost {gbp(disposing.cost)} less
+            accumulated depreciation {gbp(disposing.accumulatedDepreciation)}).
+            Proceeds above that book a profit, below it a loss. Leave proceeds at zero to scrap.
+          </div>
+          <div className="row">
+            <Field label="Disposal date">
+              <input type="date" value={d.disposalDate}
+                onChange={e => setD({ ...d, disposalDate: e.target.value })} /></Field>
+            <Field label="Proceeds">
+              <input value={d.proceeds} onChange={e => setD({ ...d, proceeds: e.target.value })}
+                placeholder="0.00" /></Field>
+          </div>
+          <div className="row">
+            <Field label="Proceeds received into">
+              <select value={d.proceedsAccountId}
+                onChange={e => setD({ ...d, proceedsAccountId: e.target.value })}>
+                <option value="">— bank or debtor —</option>
+                {proceedsAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
+              </select></Field>
+            <Field label="Profit/loss on disposal account">
+              <select value={d.disposalAccountId}
+                onChange={e => setD({ ...d, disposalAccountId: e.target.value })}>
+                <option value="">— P&L account —</option>
+                {plAccounts.map((a: any) => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}
+              </select></Field>
+          </div>
+          {(parseFloat(d.proceeds) || 0) !== 0 && (
+            <div className="sub" style={{ marginTop: 8 }}>
+              Expected outcome: {(parseFloat(d.proceeds) || 0) - disposing.netBookValue >= 0
+                ? `profit of ${gbp((parseFloat(d.proceeds) || 0) - disposing.netBookValue)}`
+                : `loss of ${gbp(disposing.netBookValue - (parseFloat(d.proceeds) || 0))}`}
+            </div>
+          )}
+          <div className="row" style={{ marginTop: 12 }}>
+            <button className="btn"
+              disabled={!d.disposalAccountId || ((parseFloat(d.proceeds) || 0) !== 0 && !d.proceedsAccountId)}
+              onClick={dispose}>Post disposal</button>
+            <button className="btn ghost" onClick={() => setDisposing(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
+
       <h2>Register</h2>
       <table>
         <thead><tr><th>Code</th><th>Description</th><th>Status</th><th>Method</th>
@@ -164,8 +229,19 @@ export default function Assets() {
               <td className="num">{gbp(a.accumulatedDepreciation)}</td>
               <td className="num"><strong>{gbp(a.netBookValue)}</strong></td>
               <td className="num">{gbp(a.nextMonthlyCharge)}</td>
-              <td>{a.status === 0 &&
-                <button className="btn ghost" onClick={() => capitalise(a)}>Capitalise</button>}</td>
+              <td>
+                <div className="row" style={{ gap: 6 }}>
+                  {a.status === 0 &&
+                    <button className="btn ghost" onClick={() => capitalise(a)}>Capitalise</button>}
+                  {a.status !== 2 &&
+                    <button className="btn ghost" onClick={() => setDisposing(a)}>Dispose</button>}
+                  {a.status === 2 && a.disposalGainLoss !== undefined && (
+                    <span className="sub" style={{ marginBottom: 0 }}>
+                      {a.disposalGainLoss >= 0 ? 'Profit' : 'Loss'} {gbp(Math.abs(a.disposalGainLoss))}
+                    </span>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
           {(assets ?? []).length === 0 && <tr><td colSpan={9} className="sub">No assets yet.</td></tr>}

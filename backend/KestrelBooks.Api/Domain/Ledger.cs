@@ -44,7 +44,8 @@ public enum SourceType
 {
     Manual = 0, SalesInvoice = 1, PurchaseInvoice = 2,
     Receipt = 3, Payment = 4, Depreciation = 5, AssetCapitalisation = 6, Reversal = 7,
-    OpeningBalance = 8, SalesCreditNote = 9, PurchaseCreditNote = 10, YearEndClose = 11
+    OpeningBalance = 8, SalesCreditNote = 9, PurchaseCreditNote = 10, YearEndClose = 11,
+    AssetDisposal = 12, Accrual = 13, Prepayment = 14, PayrollJournal = 15
 }
 
 /// <summary>
