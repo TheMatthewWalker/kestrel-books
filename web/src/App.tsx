@@ -23,6 +23,7 @@ import Production from './pages/Production';
 import Receipts from './pages/Receipts';
 import PeriodEnd from './pages/PeriodEnd';
 import Audit from './pages/Audit';
+import BankRules from './pages/BankRules';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="periods" element={<Periods />} />
           <Route path="period-end" element={<PeriodEnd />} />
           <Route path="audit" element={<Audit />} />
+          <Route path="bank-rules" element={<BankRules />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
           <Route path="inventory" element={<Inventory />} />
@@ -88,7 +90,7 @@ const TAB_GROUPS: [string, [string, string][]][] = [
     ['period-end', 'Accruals']]],
   ['Sales & purchases', [['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
     ['recurring', 'Recurring'], ['contacts', 'Contacts']]],
-  ['Money', [['money', 'Money'], ['banking', 'Banking'], ['receipts', 'Receipts']]],
+  ['Money', [['money', 'Money'], ['banking', 'Banking'], ['bank-rules', 'Rules'], ['receipts', 'Receipts']]],
   ['Stock & assets', [['items', 'Items'], ['inventory', 'Inventory'],
     ['production', 'Production'], ['assets', 'Assets']]],
   ['Compliance', [['vat', 'VAT'], ['periods', 'Periods'], ['opening', 'Opening'],
