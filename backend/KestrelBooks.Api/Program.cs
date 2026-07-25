@@ -96,6 +96,7 @@ builder.Services.AddScoped<BankReconciliationService>();
 builder.Services.AddScoped<DataExportService>();
 builder.Services.AddScoped<BankRuleService>();
 builder.Services.AddScoped<CreditControlService>();
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddHostedService<CreditControlSweep>();
 builder.Services.AddHostedService<RecurringInvoiceGenerator>();
 // Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and

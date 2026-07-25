@@ -55,6 +55,10 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<BankRule> BankRules => Set<BankRule>();
     public DbSet<CreditControlStage> CreditControlStages => Set<CreditControlStage>();
     public DbSet<CreditControlLog> CreditControlLogs => Set<CreditControlLog>();
+    public DbSet<SalesQuote> SalesQuotes => Set<SalesQuote>();
+    public DbSet<SalesQuoteLine> SalesQuoteLines => Set<SalesQuoteLine>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
     public DbSet<RecurringInvoiceLine> RecurringInvoiceLines => Set<RecurringInvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -168,6 +172,18 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.AtUtc });
         b.Entity<BankRule>().HasIndex(x => new { x.BusinessId, x.Priority });
         b.Entity<CreditControlStage>().HasIndex(x => new { x.BusinessId, x.DaysOverdue });
+        b.Entity<SalesQuote>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.SalesQuoteId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<SalesQuote>().HasIndex(x => new { x.BusinessId, x.Number });
+        b.Entity<SalesQuote>().Ignore(x => x.NetTotal).Ignore(x => x.VatTotal).Ignore(x => x.GrossTotal);
+        b.Entity<PurchaseOrder>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.PurchaseOrderId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<PurchaseOrder>().HasIndex(x => new { x.BusinessId, x.Number });
+        b.Entity<PurchaseOrder>().Ignore(x => x.NetTotal).Ignore(x => x.VatTotal).Ignore(x => x.GrossTotal);
+        b.Entity<SalesQuoteLine>().Property(x => x.Quantity).HasPrecision(18, 3);
+        b.Entity<SalesQuoteLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
+        b.Entity<PurchaseOrderLine>().Property(x => x.Quantity).HasPrecision(18, 3);
+        b.Entity<PurchaseOrderLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
         b.Entity<CreditControlLog>().HasIndex(x => new { x.BusinessId, x.SalesInvoiceId, x.StageId });
         b.Entity<PeriodEndSchedule>().Ignore(x => x.IsSpread).Ignore(x => x.MonthlyAmount);
         b.Entity<RecurringInvoiceLine>().Property(x => x.Quantity).HasPrecision(18, 3);
@@ -201,6 +217,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<AuditEntry>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<BankRule>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<CreditControlStage>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<SalesQuote>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<PurchaseOrder>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<CreditControlLog>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
     }
 

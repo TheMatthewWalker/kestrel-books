@@ -25,6 +25,7 @@ import PeriodEnd from './pages/PeriodEnd';
 import Audit from './pages/Audit';
 import BankRules from './pages/BankRules';
 import CreditControl from './pages/CreditControl';
+import Orders from './pages/Orders';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -54,6 +55,7 @@ export default function App() {
           <Route path="audit" element={<Audit />} />
           <Route path="bank-rules" element={<BankRules />} />
           <Route path="credit-control" element={<CreditControl />} />
+          <Route path="orders" element={<Orders />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
           <Route path="inventory" element={<Inventory />} />
@@ -90,7 +92,7 @@ function Shell() {
 const TAB_GROUPS: [string, [string, string][]][] = [
   ['Review', [['reports', 'Reports'], ['aged', 'Ageing'], ['journals', 'Journals'],
     ['period-end', 'Accruals']]],
-  ['Sales & purchases', [['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
+  ['Sales & purchases', [['orders', 'Quotes & POs'], ['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
     ['recurring', 'Recurring'], ['credit-control', 'Credit control'], ['contacts', 'Contacts']]],
   ['Money', [['money', 'Money'], ['banking', 'Banking'], ['bank-rules', 'Rules'], ['receipts', 'Receipts']]],
   ['Stock & assets', [['items', 'Items'], ['inventory', 'Inventory'],
