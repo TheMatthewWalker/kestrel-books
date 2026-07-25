@@ -21,6 +21,7 @@ import Inventory from './pages/Inventory';
 import Assets from './pages/Assets';
 import Production from './pages/Production';
 import Receipts from './pages/Receipts';
+import PeriodEnd from './pages/PeriodEnd';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="vat" element={<Vat />} />
           <Route path="opening" element={<Opening />} />
           <Route path="periods" element={<Periods />} />
+          <Route path="period-end" element={<PeriodEnd />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
           <Route path="inventory" element={<Inventory />} />
@@ -80,7 +82,8 @@ function Shell() {
 }
 
 const TAB_GROUPS: [string, [string, string][]][] = [
-  ['Review', [['reports', 'Reports'], ['aged', 'Ageing'], ['journals', 'Journals']]],
+  ['Review', [['reports', 'Reports'], ['aged', 'Ageing'], ['journals', 'Journals'],
+    ['period-end', 'Accruals']]],
   ['Sales & purchases', [['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
     ['recurring', 'Recurring'], ['contacts', 'Contacts']]],
   ['Money', [['money', 'Money'], ['banking', 'Banking'], ['receipts', 'Receipts']]],
