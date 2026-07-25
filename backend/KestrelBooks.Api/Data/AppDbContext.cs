@@ -53,6 +53,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<PeriodEndPosting> PeriodEndPostings => Set<PeriodEndPosting>();
     public DbSet<AuditEntry> AuditEntries => Set<AuditEntry>();
     public DbSet<BankRule> BankRules => Set<BankRule>();
+    public DbSet<CreditControlStage> CreditControlStages => Set<CreditControlStage>();
+    public DbSet<CreditControlLog> CreditControlLogs => Set<CreditControlLog>();
     public DbSet<RecurringInvoiceLine> RecurringInvoiceLines => Set<RecurringInvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -165,6 +167,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId });
         b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.AtUtc });
         b.Entity<BankRule>().HasIndex(x => new { x.BusinessId, x.Priority });
+        b.Entity<CreditControlStage>().HasIndex(x => new { x.BusinessId, x.DaysOverdue });
+        b.Entity<CreditControlLog>().HasIndex(x => new { x.BusinessId, x.SalesInvoiceId, x.StageId });
         b.Entity<PeriodEndSchedule>().Ignore(x => x.IsSpread).Ignore(x => x.MonthlyAmount);
         b.Entity<RecurringInvoiceLine>().Property(x => x.Quantity).HasPrecision(18, 3);
         b.Entity<RecurringInvoiceLine>().Property(x => x.UnitPrice).HasPrecision(18, 2);
@@ -196,6 +200,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<PeriodEndSchedule>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<AuditEntry>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<BankRule>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<CreditControlStage>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<CreditControlLog>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
     }
 
     /// <summary>
