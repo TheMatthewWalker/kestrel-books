@@ -5,11 +5,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace KestrelBooks.Api.Controllers;
 
-public record RegisterRequest(string Email, string Password, string DisplayName);
+public record RegisterRequest(string Email, string Password, string DisplayName, string? InviteCode = null);
 public record LoginRequest(string Email, string Password);
 public record MfaVerifyRequest(string MfaToken, string Code, string Method); // method: totp | email
 public record RefreshRequest(string RefreshToken);
@@ -25,17 +26,19 @@ public class AuthController : ControllerBase
 {
     private readonly UserManager<AppUser> _users;
     private readonly TokenService _tokens;
+    private readonly IConfiguration _config;
     private readonly AppDbContext _db;
     private readonly OneTimeCodeService _codes;
     private readonly IDataProtector _mfaProtector;
     private readonly IDataProtector _totpProtector;
 
     public AuthController(UserManager<AppUser> users, TokenService tokens, AppDbContext db,
-        OneTimeCodeService codes, IDataProtectionProvider dp)
+        OneTimeCodeService codes, IDataProtectionProvider dp, IConfiguration config)
     {
         _users = users; _tokens = tokens; _db = db; _codes = codes;
         _mfaProtector = dp.CreateProtector("mfa-challenge");
         _totpProtector = dp.CreateProtector("totp-secret");
+            _config = config;
     }
 
     private string? Ip() => HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -75,9 +78,41 @@ public class AuthController : ControllerBase
             Event = e, Ip = Ip(), Detail = detail,
         });
 
+    /// <summary>
+    /// Registration policy, in order of precedence:
+    ///   Auth:Registration = "open"    — anyone may sign up (development only).
+    ///   Auth:Registration = "closed"  — nobody may, except the very first user
+    ///                                   ever created, who becomes the practice owner.
+    ///   Auth:Registration = "invite"  — an invite code matching Auth:InviteCode is required.
+    /// The default is "closed", so an unconfigured deployment is safe rather than open:
+    /// the first person to reach it gets an account, and everyone after that needs
+    /// to be invited to a business by an Owner.
+    /// </summary>
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest req)
     {
+        var policy = (_config["Auth:Registration"] ?? "closed").ToLowerInvariant();
+        if (policy != "open")
+        {
+            var anyUserExists = await _db.Users.AnyAsync();
+            if (anyUserExists)
+            {
+                if (policy == "invite")
+                {
+                    var expected = _config["Auth:InviteCode"];
+                    if (string.IsNullOrEmpty(expected) || req.InviteCode != expected)
+                        return BadRequest(new { error = "A valid invite code is required to register." });
+                }
+                else
+                {
+                    return BadRequest(new
+                    {
+                        error = "Registration is closed. Ask an owner to invite you to a client.",
+                    });
+                }
+            }
+        }
+
         var user = new AppUser { UserName = req.Email, Email = req.Email, DisplayName = req.DisplayName };
         var result = await _users.CreateAsync(user, req.Password);
         if (!result.Succeeded)

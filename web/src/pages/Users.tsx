@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, errorMessage } from '../api';
+import { api, downloadFile, errorMessage } from '../api';
 import { Field, useLoad } from '../components';
 
 const ROLES: [number, string][] = [[0, 'Read only'], [1, 'Bookkeeper'], [3, 'Accountant'], [2, 'Owner']];
@@ -62,6 +62,10 @@ export default function Users() {
 
       <div className="card" style={{ marginTop: 14, maxWidth: 520 }}>
         <h2 style={{ marginTop: 0 }}>Invite someone</h2>
+        <div className="sub">
+          Public sign-up is closed by default — people are given access here, by an owner,
+          rather than registering themselves.
+        </div>
         <Field label="Email (must already have a KestrelBooks account)">
           <input value={email} onChange={e => setEmail(e.target.value)} /></Field>
         <Field label="Role">
@@ -70,6 +74,19 @@ export default function Users() {
           </select></Field>
         {err && <div className="err">{err}</div>}
         <button className="btn" style={{ marginTop: 12 }} disabled={!email} onClick={invite}>Grant access</button>
+      </div>
+
+      <div className="card" style={{ marginTop: 18, maxWidth: 520 }}>
+        <h2 style={{ marginTop: 0 }}>Export everything</h2>
+        <div className="sub">
+          A complete copy of these books as a zip of CSV files — ledger, contacts, invoices,
+          items, assets, VAT submissions and the audit trail. Keep one before any major change,
+          and hand one over if the client ever leaves.
+        </div>
+        <button className="btn ghost" onClick={() => downloadFile(
+          `/businesses/${businessId}/data/export`, `kestrelbooks-export.zip`)}>
+          Download full export
+        </button>
       </div>
     </div>
   );
