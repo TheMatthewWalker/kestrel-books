@@ -92,6 +92,7 @@ builder.Services.AddScoped<AttachmentService>();
 builder.Services.AddScoped<RecurringInvoiceService>();
 builder.Services.AddScoped<PracticeDashboardService>();
 builder.Services.AddScoped<PeriodEndService>();
+builder.Services.AddScoped<BankReconciliationService>();
 builder.Services.AddHostedService<RecurringInvoiceGenerator>();
 // Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and
 // MFA/state payloads survive restarts. Move to a key vault/blob in production.

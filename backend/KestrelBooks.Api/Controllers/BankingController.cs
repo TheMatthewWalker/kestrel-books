@@ -16,11 +16,13 @@ public class BankingController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly AccessService _access;
+    private readonly BankReconciliationService _reconciliation;
     private readonly BankImportService _bank;
     private readonly DocumentPostingService _docs;
-    public BankingController(AppDbContext db, AccessService access, BankImportService bank, DocumentPostingService docs)
+    public BankingController(AppDbContext db, AccessService access, BankImportService bank, DocumentPostingService docs, BankReconciliationService reconciliation)
     {
         _db = db; _access = access; _bank = bank; _docs = docs;
+            _reconciliation = reconciliation;
     }
 
     /// <summary>Import a CSV or OFX statement export for a bank account.</summary>
@@ -118,5 +120,19 @@ public class BankingController : ControllerBase
         line.MatchedJournalLineId = journal.Lines.First(l => l.AccountId == line.BankAccountId).Id;
         await _db.SaveChangesAsync();
         return Ok(new { journalNumber = journal.Number });
+    }
+
+    /// <summary>
+    /// The reconciliation statement: ledger balance versus the bank's balance,
+    /// with the unmatched and unpresented items that explain any difference.
+    /// Supply the statement's closing balance to prove the account properly.
+    /// </summary>
+    [HttpGet("reconciliation")]
+    public async Task<IActionResult> Reconciliation(Guid businessId,
+        [FromQuery] Guid bankAccountId, [FromQuery] DateOnly? asOf, [FromQuery] decimal? statementBalance)
+    {
+        await _access.EnsureAccessAsync(User, businessId);
+        return Ok(await _reconciliation.BuildAsync(businessId, bankAccountId,
+            asOf ?? DateOnly.FromDateTime(DateTime.UtcNow), statementBalance));
     }
 }

@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { api, errorMessage, gbp } from '../api';
-import { Field, useLoad } from '../components';
+import { api, errorMessage, gbp, today } from '../api';
+import { Chips, Field, useLoad } from '../components';
 
 /** Statement import + reconciliation: match suggestions, exclude, or quick-create. */
 export default function Banking() {
@@ -10,6 +10,10 @@ export default function Banking() {
   const [bankId, setBankId] = useState('');
   const [data, setData] = useState<any>(null);
   const [chosen, setChosen] = useState<Record<string, string>>({});
+  const [view, setView] = useState('lines');
+  const [asOf, setAsOf] = useState(today());
+  const [stmtBalance, setStmtBalance] = useState('');
+  const [rec, setRec] = useState<any>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const banks = (accounts ?? []).filter((a: any) => a.isBank);
@@ -41,6 +45,18 @@ export default function Banking() {
     try { await fn(); loadLines(bankId); } catch (e) { alert(errorMessage(e)); }
   };
 
+  const reconcile = async () => {
+    try {
+      const r = await api.get(`/businesses/${businessId}/banking/reconciliation`, {
+        params: {
+          bankAccountId: bankId, asOf,
+          statementBalance: stmtBalance === '' ? undefined : parseFloat(stmtBalance),
+        },
+      });
+      setRec(r.data);
+    } catch (e) { alert(errorMessage(e)); }
+  };
+
   const lines: any[] = data?.lines ?? (Array.isArray(data) ? data : []);
   const suggestions: Record<string, any> = {};
   (data?.suggestions ?? []).forEach((s: any) => { suggestions[s.lineId] = s; });
@@ -60,6 +76,74 @@ export default function Banking() {
       </div>
 
       {bankId && (
+        <div style={{ marginTop: 16 }}>
+          <Chips options={[['lines', 'Statement lines'], ['rec', 'Reconciliation']]}
+            value={view} onChange={setView} />
+        </div>
+      )}
+
+      {bankId && view === 'rec' && (
+        <div style={{ marginTop: 14 }}>
+          <div className="row" style={{ alignItems: 'flex-end', maxWidth: 700 }}>
+            <Field label="As at"><input type="date" value={asOf}
+              onChange={e => setAsOf(e.target.value)} /></Field>
+            <Field label="Statement closing balance">
+              <input value={stmtBalance} onChange={e => setStmtBalance(e.target.value)}
+                placeholder="from the bank statement" /></Field>
+            <button className="btn" onClick={reconcile}>Reconcile</button>
+          </div>
+
+          {rec && (
+            <div style={{ marginTop: 16 }}>
+              <div className="cards">
+                <div className="card"><div className="label">Ledger balance</div>
+                  <div className="value">{gbp(rec.ledgerBalance)}</div></div>
+                <div className="card"><div className="label">Statement balance</div>
+                  <div className="value">{gbp(rec.statementBalance)}</div></div>
+                <div className="card"><div className="label">Unpresented (in books only)</div>
+                  <div className="value">{gbp(rec.unpresentedLedgerTotal)}</div></div>
+                <div className="card"><div className="label">Unmatched (on statement only)</div>
+                  <div className="value">{gbp(rec.unmatchedStatementTotal)}</div></div>
+                <div className="card"><div className="label">Difference</div>
+                  <div className={`value${rec.reconciled ? '' : ' bad'}`}>{gbp(rec.difference)}</div></div>
+              </div>
+              <div className="sub" style={{ marginTop: 10 }}>
+                {rec.reconciled
+                  ? 'Reconciled — the ledger agrees to the bank once the items below are taken into account.'
+                  : 'Not reconciled. Something is missing or wrong: work through the items below, and check the statement balance you entered.'}
+              </div>
+
+              <h2>In the ledger, not yet on the statement</h2>
+              <table>
+                <thead><tr><th>Date</th><th>Description</th><th className="num">Amount</th></tr></thead>
+                <tbody>
+                  {rec.unpresentedLedgerItems.map((i: any, idx: number) => (
+                    <tr key={idx}><td>{i.date}</td><td>{i.description}</td>
+                      <td className={`num ${i.amount >= 0 ? 'cr' : 'dr'}`}>{gbp(i.amount)}</td></tr>
+                  ))}
+                  {rec.unpresentedLedgerItems.length === 0 &&
+                    <tr><td colSpan={3} className="sub">Nothing outstanding.</td></tr>}
+                </tbody>
+              </table>
+
+              <h2>On the statement, not yet in the ledger</h2>
+              <table>
+                <thead><tr><th>Date</th><th>Description</th><th className="num">Amount</th></tr></thead>
+                <tbody>
+                  {rec.unmatchedStatementLines.map((i: any, idx: number) => (
+                    <tr key={idx}><td>{i.date}</td><td>{i.description}</td>
+                      <td className={`num ${i.amount >= 0 ? 'cr' : 'dr'}`}>{gbp(i.amount)}</td></tr>
+                  ))}
+                  {rec.unmatchedStatementLines.length === 0 &&
+                    <tr><td colSpan={3} className="sub">Nothing outstanding.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {bankId && view === 'lines' && (
         <table style={{ marginTop: 16 }}>
           <thead><tr><th>Date</th><th>Description</th><th className="num">Amount</th><th>Status</th><th /></tr></thead>
           <tbody>
