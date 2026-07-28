@@ -82,6 +82,8 @@ public abstract class InvoiceLineBase
     public VatRate VatRate { get; set; } = VatRate.Standard20;
     /// <summary>GL account this line analyses to (income for sales, expense/asset for purchases).</summary>
     public Guid AccountId { get; set; }
+    /// <summary>Optional analysis dimension carried through to the journal.</summary>
+    public Guid? TrackingOptionId { get; set; }
     public decimal Net => Math.Round(Quantity * UnitPrice, 2, MidpointRounding.AwayFromZero);
     public decimal Vat => Math.Round(Net * VatRates.Percent(VatRate), 2, MidpointRounding.AwayFromZero);
     public decimal Gross => Net + Vat;

@@ -47,8 +47,9 @@ public class DocumentPostingService
         {
             new(debtors.Id, inv.GrossTotal, 0, $"{inv.Customer.Name} — invoice {inv.Number}")
         };
-        foreach (var g in inv.Lines.GroupBy(l => l.AccountId))
-            lines.Add(new DraftLine(g.Key, 0, g.Sum(l => l.Net), $"Sales — invoice {inv.Number}"));
+        foreach (var g in inv.Lines.GroupBy(l => new { l.AccountId, l.TrackingOptionId }))
+            lines.Add(new DraftLine(g.Key.AccountId, 0, g.Sum(l => l.Net),
+                $"Sales — invoice {inv.Number}", g.Key.TrackingOptionId));
         if (inv.VatTotal > 0)
             lines.Add(new DraftLine(outputVat.Id, 0, inv.VatTotal, $"Output VAT — invoice {inv.Number}"));
 

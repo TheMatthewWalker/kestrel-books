@@ -4,7 +4,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace KestrelBooks.Api.Services;
 
-public record DraftLine(Guid AccountId, decimal Debit, decimal Credit, string? Description);
+public record DraftLine(Guid AccountId, decimal Debit, decimal Credit, string? Description,
+    Guid? TrackingOptionId = null);
 
 /// <summary>
 /// The double-entry engine. Every financial event in the system ultimately
@@ -51,7 +52,8 @@ public class PostingService
                 AccountId = l.AccountId,
                 Debit = Math.Round(l.Debit, 2),
                 Credit = Math.Round(l.Credit, 2),
-                Description = l.Description
+                Description = l.Description,
+                TrackingOptionId = l.TrackingOptionId
             }).ToList()
         };
         Validate(entry);
@@ -124,7 +126,8 @@ public class PostingService
                 AccountId = l.AccountId,
                 Debit = l.Credit,
                 Credit = l.Debit,
-                Description = l.Description
+                Description = l.Description,
+                TrackingOptionId = l.TrackingOptionId
             }).ToList()
         };
         original.Status = JournalStatus.Reversed;

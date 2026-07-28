@@ -35,7 +35,6 @@ public class FixedAsset
     public DateOnly? DisposalDate { get; set; }
     public decimal DisposalProceeds { get; set; }
     public decimal DisposalGainLoss { get; set; }    // positive = profit on disposal
-    public DateOnly? DisposalDate { get; set; }
     public string? Notes { get; set; }
 
     public decimal NetBookValue => Cost - AccumulatedDepreciation;

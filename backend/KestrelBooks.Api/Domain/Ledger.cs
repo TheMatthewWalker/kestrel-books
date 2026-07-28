@@ -82,4 +82,6 @@ public class JournalLine
     public decimal Debit { get; set; }
     public decimal Credit { get; set; }
     public string? Description { get; set; }
+    /// <summary>Optional analysis dimension — department, project, site.</summary>
+    public Guid? TrackingOptionId { get; set; }
 }

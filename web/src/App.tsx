@@ -26,6 +26,7 @@ import Audit from './pages/Audit';
 import BankRules from './pages/BankRules';
 import CreditControl from './pages/CreditControl';
 import Orders from './pages/Orders';
+import Tracking from './pages/Tracking';
 
 export default function App() {
   const { ready, signedIn } = useAuth();
@@ -56,6 +57,7 @@ export default function App() {
           <Route path="bank-rules" element={<BankRules />} />
           <Route path="credit-control" element={<CreditControl />} />
           <Route path="orders" element={<Orders />} />
+          <Route path="tracking" element={<Tracking />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
           <Route path="inventory" element={<Inventory />} />
@@ -98,7 +100,7 @@ const TAB_GROUPS: [string, [string, string][]][] = [
   ['Stock & assets', [['items', 'Items'], ['inventory', 'Inventory'],
     ['production', 'Production'], ['assets', 'Assets']]],
   ['Compliance', [['vat', 'VAT'], ['periods', 'Periods'], ['opening', 'Opening'],
-    ['users', 'Users'], ['audit', 'Audit trail']]],
+    ['users', 'Users'], ['tracking', 'Tracking'], ['audit', 'Audit trail']]],
 ];
 
 function ClientShell() {
