@@ -109,14 +109,14 @@ public class DocumentPostingService
             .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
             .ToDictionaryAsync(i => i.Id);
 
-        var resolved = new List<(Guid accountId, decimal net)>();
+        var resolved = new List<(Guid accountId, decimal net, Guid? trackingOptionId)>();
         var stockMovements = new List<StockMovement>();
         foreach (var line in inv.Lines)
         {
             if (line.ItemId != null && trackedItems.TryGetValue(line.ItemId.Value, out var item))
             {
                 var stockAcc = await _stock.StockAccountIdAsync(item);
-                resolved.Add((stockAcc, line.Net));
+                resolved.Add((stockAcc, line.Net, line.TrackingOptionId));
                 var movement = await _stock.MoveAsync(item, inv.Date, StockMovementType.PurchaseReceipt,
                     line.Quantity, line.Quantity != 0 ? Math.Round(line.Net / line.Quantity, 4) : 0,
                     null, inv.Id, $"Received on invoice {inv.Number}");
@@ -124,13 +124,14 @@ public class DocumentPostingService
             }
             else
             {
-                resolved.Add((line.AccountId, line.Net));
+                resolved.Add((line.AccountId, line.Net, line.TrackingOptionId));
             }
         }
 
         var lines = new List<DraftLine>();
-        foreach (var g in resolved.GroupBy(r => r.accountId))
-            lines.Add(new DraftLine(g.Key, g.Sum(r => r.net), 0, $"Purchase — invoice {inv.Number}"));
+        foreach (var g in resolved.GroupBy(r => new { r.accountId, r.trackingOptionId }))
+            lines.Add(new DraftLine(g.Key.accountId, g.Sum(r => r.net), 0,
+                $"Purchase — invoice {inv.Number}", g.Key.trackingOptionId));
         if (inv.VatTotal > 0)
             lines.Add(new DraftLine(inputVat.Id, inv.VatTotal, 0, $"Input VAT — invoice {inv.Number}"));
         lines.Add(new DraftLine(creditors.Id, 0, inv.GrossTotal, $"{inv.Vendor.Name} — invoice {inv.Number}"));
@@ -256,8 +257,9 @@ public class DocumentPostingService
         var outputVat = await _posting.RequireTaggedAccountAsync(businessId, SystemTags.VatOutput);
 
         var lines = new List<DraftLine>();
-        foreach (var g in cn.Lines.GroupBy(l => l.AccountId))
-            lines.Add(new DraftLine(g.Key, g.Sum(l => l.Net), 0, $"Credit note {cn.Number}"));
+        foreach (var g in cn.Lines.GroupBy(l => new { l.AccountId, l.TrackingOptionId }))
+            lines.Add(new DraftLine(g.Key.AccountId, g.Sum(l => l.Net), 0,
+                $"Credit note {cn.Number}", g.Key.TrackingOptionId));
         if (cn.VatTotal > 0)
             lines.Add(new DraftLine(outputVat.Id, cn.VatTotal, 0, $"Output VAT reversal — credit note {cn.Number}"));
         lines.Add(new DraftLine(debtors.Id, 0, cn.GrossTotal, $"{cn.Customer.Name} — credit note {cn.Number}"));
@@ -316,20 +318,20 @@ public class DocumentPostingService
             .Where(i => i.BusinessId == businessId && itemIds.Contains(i.Id) && i.TrackStock)
             .ToDictionaryAsync(i => i.Id);
 
-        var resolved = new List<(Guid accountId, decimal net)>();
+        var resolved = new List<(Guid accountId, decimal net, Guid? trackingOptionId)>();
         var movements = new List<StockMovement>();
         foreach (var line in cn.Lines)
         {
             if (line.ItemId != null && trackedItems.TryGetValue(line.ItemId.Value, out var item))
             {
-                resolved.Add((await _stock.StockAccountIdAsync(item), line.Net));
+                resolved.Add((await _stock.StockAccountIdAsync(item), line.Net, line.TrackingOptionId));
                 var movement = await _stock.MoveAsync(item, cn.Date, StockMovementType.PurchaseReceipt,
                     -line.Quantity, null, null, cn.Id, $"Returned to supplier on credit note {cn.Number}");
                 movements.Add(movement);
             }
             else
             {
-                resolved.Add((line.AccountId, line.Net));
+                resolved.Add((line.AccountId, line.Net, line.TrackingOptionId));
             }
         }
 
@@ -337,8 +339,9 @@ public class DocumentPostingService
         {
             new(creditors.Id, cn.GrossTotal, 0, $"{cn.Vendor.Name} — credit note {cn.Number}")
         };
-        foreach (var g in resolved.GroupBy(r => r.accountId))
-            lines.Add(new DraftLine(g.Key, 0, g.Sum(r => r.net), $"Credit note {cn.Number}"));
+        foreach (var g in resolved.GroupBy(r => new { r.accountId, r.trackingOptionId }))
+            lines.Add(new DraftLine(g.Key.accountId, 0, g.Sum(r => r.net),
+                $"Credit note {cn.Number}", g.Key.trackingOptionId));
         if (cn.VatTotal > 0)
             lines.Add(new DraftLine(inputVat.Id, 0, cn.VatTotal, $"Input VAT reversal — credit note {cn.Number}"));
 
