@@ -27,6 +27,7 @@ import BankRules from './pages/BankRules';
 import CreditControl from './pages/CreditControl';
 import Orders from './pages/Orders';
 import Budgets from './pages/Budgets';
+import Payroll from './pages/Payroll';
 import Tracking from './pages/Tracking';
 
 export default function App() {
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="credit-control" element={<CreditControl />} />
           <Route path="orders" element={<Orders />} />
           <Route path="budgets" element={<Budgets />} />
+          <Route path="payroll" element={<Payroll />} />
           <Route path="tracking" element={<Tracking />} />
           <Route path="users" element={<Users />} />
           <Route path="items" element={<Items />} />
@@ -95,7 +97,7 @@ function Shell() {
 
 const TAB_GROUPS: [string, [string, string][]][] = [
   ['Review', [['reports', 'Reports'], ['aged', 'Ageing'], ['journals', 'Journals'],
-    ['period-end', 'Accruals'], ['budgets', 'Budgets']]],
+    ['period-end', 'Accruals'], ['budgets', 'Budgets'], ['payroll', 'Payroll']]],
   ['Sales & purchases', [['orders', 'Quotes & POs'], ['invoices', 'Invoices'], ['credit-notes', 'Credit notes'],
     ['recurring', 'Recurring'], ['credit-control', 'Credit control'], ['contacts', 'Contacts']]],
   ['Money', [['money', 'Money'], ['banking', 'Banking'], ['bank-rules', 'Rules'], ['receipts', 'Receipts']]],
