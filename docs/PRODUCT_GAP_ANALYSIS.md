@@ -114,6 +114,20 @@ conversations start with "why is this number what it is?"
 
 ---
 
+## Build status (v2.3)
+
+**Phase 6 — complete.** Asset disposal, accruals/prepayments/deferred income, bank
+reconciliation statement, document audit trail, full data export, registration lockdown.
+
+**Phase 7 — complete.** Bank rules, credit control ladder, quotes and purchase orders,
+tracking categories, budgets and variance, payroll journal import.
+
+**Phase 8 — complete.** Review assistant, VAT pre-flight checker, records-gap chaser,
+cash flow forecast from observed payment behaviour.
+
+Still outstanding from this document: Open Banking feeds (commercially gated),
+multi-currency, and all of Phase 9 (MTD ITSA or CIS) and Phase 10 (practice platform).
+
 ## Sequencing plan
 
 The ordering principle: correctness before convenience, convenience before

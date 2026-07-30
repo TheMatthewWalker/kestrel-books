@@ -180,3 +180,10 @@ roles, this already is at an exceptional level.
 0 Make it real ──► 1 Numbers ──► 2 Security ──► 3 Hosting ──► 4 Table stakes ──► 5 Web ──► 6 Pilot
                                    └────────────── L Legal/HMRC (parallel, long lead) ─────────┘
 ```
+
+
+## Phases 6–8 — BUILT (v2.3)
+
+Correctness (Phase 6), daily-workflow parity (Phase 7) and the four differentiators
+(Phase 8) are all built. See `PRODUCT_GAP_ANALYSIS.md` for what each was for and
+what deliberately remains unbuilt.
