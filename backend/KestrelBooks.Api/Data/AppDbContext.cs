@@ -61,6 +61,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
     public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
     public DbSet<TrackingCategory> TrackingCategories => Set<TrackingCategory>();
     public DbSet<TrackingOption> TrackingOptions => Set<TrackingOption>();
+    public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<BudgetLine> BudgetLines => Set<BudgetLine>();
     public DbSet<RecurringInvoiceLine> RecurringInvoiceLines => Set<RecurringInvoiceLine>();
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -177,6 +179,9 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<SalesQuote>().HasMany(x => x.Lines).WithOne()
             .HasForeignKey(x => x.SalesQuoteId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<SalesQuote>().HasIndex(x => new { x.BusinessId, x.Number });
+        b.Entity<Budget>().HasMany(x => x.Lines).WithOne()
+            .HasForeignKey(x => x.BudgetId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<BudgetLine>().HasIndex(x => new { x.BudgetId, x.AccountId, x.Month });
         b.Entity<TrackingCategory>().HasMany(x => x.Options).WithOne()
             .HasForeignKey(x => x.TrackingCategoryId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<TrackingCategory>().HasIndex(x => x.BusinessId);
@@ -224,6 +229,8 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<BankRule>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<CreditControlStage>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<SalesQuote>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<Budget>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
+        b.Entity<BudgetLine>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<TrackingCategory>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<TrackingOption>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
         b.Entity<PurchaseOrder>().HasQueryFilter(e => TenantId == null || e.BusinessId == TenantId);
