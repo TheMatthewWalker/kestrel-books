@@ -99,6 +99,8 @@ builder.Services.AddScoped<CreditControlService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<BudgetService>();
 builder.Services.AddScoped<PayrollImportService>();
+builder.Services.AddScoped<ReviewAssistantService>();
+builder.Services.AddScoped<VatPreflightService>();
 builder.Services.AddHostedService<CreditControlSweep>();
 builder.Services.AddHostedService<RecurringInvoiceGenerator>();
 // Persist Data Protection keys so encrypted secrets (TOTP, HMRC tokens) and
