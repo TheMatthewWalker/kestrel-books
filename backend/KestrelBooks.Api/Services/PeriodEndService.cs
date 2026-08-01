@@ -54,7 +54,7 @@ public class PeriodEndService
     /// </summary>
     public async Task<List<Guid>> RunAsync(Guid businessId, Guid scheduleId, DateOnly upTo, Guid userId)
     {
-        var s = await _db.PeriodEndSchedules.Include(x => x.Postings)
+        var s = await _db.PeriodEndSchedules
             .FirstOrDefaultAsync(x => x.Id == scheduleId && x.BusinessId == businessId)
             ?? throw new KeyNotFoundException("Schedule not found.");
         var created = new List<Guid>();
@@ -77,7 +77,7 @@ public class PeriodEndService
                 });
             await _posting.PostAsync(businessId, main.Id, userId);
             created.Add(main.Id);
-            s.Postings.Add(new PeriodEndPosting
+            _db.PeriodEndPostings.Add(new PeriodEndPosting
             {
                 Id = Guid.NewGuid(), PeriodEndScheduleId = s.Id, JournalEntryId = main.Id,
                 Date = s.StartDate, Amount = s.TotalAmount, IsReversal = false,
@@ -95,7 +95,7 @@ public class PeriodEndService
                 });
             await _posting.PostAsync(businessId, reversal.Id, userId);
             created.Add(reversal.Id);
-            s.Postings.Add(new PeriodEndPosting
+            _db.PeriodEndPostings.Add(new PeriodEndPosting
             {
                 Id = Guid.NewGuid(), PeriodEndScheduleId = s.Id, JournalEntryId = reversal.Id,
                 Date = reversalDate, Amount = s.TotalAmount, IsReversal = true,
@@ -131,7 +131,7 @@ public class PeriodEndService
                 });
             await _posting.PostAsync(businessId, journal.Id, userId);
             created.Add(journal.Id);
-            s.Postings.Add(new PeriodEndPosting
+            _db.PeriodEndPostings.Add(new PeriodEndPosting
             {
                 Id = Guid.NewGuid(), PeriodEndScheduleId = s.Id, JournalEntryId = journal.Id,
                 Date = due, Amount = amount, IsReversal = false,

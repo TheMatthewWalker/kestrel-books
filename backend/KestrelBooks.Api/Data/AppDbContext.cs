@@ -169,8 +169,11 @@ public class AppDbContext : IdentityDbContext<AppUser, IdentityRole<Guid>, Guid>
         b.Entity<RecurringInvoice>().HasMany(x => x.Lines).WithOne()
             .HasForeignKey(x => x.RecurringInvoiceId).OnDelete(DeleteBehavior.Cascade);
         b.Entity<RecurringInvoice>().HasIndex(x => new { x.BusinessId, x.NextRunDate });
+        // Postings are written and read through their own DbSet rather than the
+        // parent collection, so the tenant-filtered principal is never fixed up.
         b.Entity<PeriodEndSchedule>().HasMany(x => x.Postings).WithOne()
             .HasForeignKey(x => x.PeriodEndScheduleId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<PeriodEndPosting>().HasIndex(x => x.PeriodEndScheduleId);
         b.Entity<PeriodEndSchedule>().HasIndex(x => new { x.BusinessId, x.NextRunDate });
         b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.EntityType, x.EntityId });
         b.Entity<AuditEntry>().HasIndex(x => new { x.BusinessId, x.AtUtc });

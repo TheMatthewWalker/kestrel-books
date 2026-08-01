@@ -27,18 +27,28 @@ public class PeriodEndController : ControllerBase
     public async Task<IActionResult> List(Guid businessId)
     {
         await _access.EnsureAccessAsync(User, businessId);
-        var schedules = await _db.PeriodEndSchedules.Include(s => s.Postings)
+        var schedules = await _db.PeriodEndSchedules
             .Where(s => s.BusinessId == businessId)
             .OrderByDescending(s => s.StartDate)
+            .ToListAsync();
+
+        // Postings are read separately rather than through the parent's collection:
+        // the schedule is tenant-filtered and its children are not, so keeping the
+        // two apart avoids EF fixing up a filtered principal.
+        var scheduleIds = schedules.Select(s => s.Id).ToList();
+        var postings = await _db.PeriodEndPostings
+            .Where(p => scheduleIds.Contains(p.PeriodEndScheduleId))
+            .Select(p => new { p.PeriodEndScheduleId, p.Amount, p.IsReversal })
             .ToListAsync();
         return Ok(schedules.Select(s => new
         {
             s.Id, s.Kind, s.Description, s.TotalAmount, s.StartDate, s.Periods,
             s.PeriodsReleased, s.Status, s.NextRunDate,
             s.IsSpread, s.MonthlyAmount,
-            Released = s.Postings.Where(p => !p.IsReversal).Sum(p => p.Amount),
-            Remaining = s.TotalAmount - s.Postings.Where(p => !p.IsReversal).Sum(p => p.Amount),
-            PostingCount = s.Postings.Count,
+            Released = postings.Where(p => p.PeriodEndScheduleId == s.Id && !p.IsReversal).Sum(p => p.Amount),
+            Remaining = s.TotalAmount
+                        - postings.Where(p => p.PeriodEndScheduleId == s.Id && !p.IsReversal).Sum(p => p.Amount),
+            PostingCount = postings.Count(p => p.PeriodEndScheduleId == s.Id),
         }));
     }
 

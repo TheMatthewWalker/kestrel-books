@@ -114,13 +114,20 @@ public class ReviewAssistantService
     /// </summary>
     private async Task<List<Finding>> UnusualVatForSupplierAsync(Guid businessId, DateOnly from, DateOnly to)
     {
-        var lines = await _db.PurchaseInvoices
+        // Net is computed in C#, not a column, so the projection has to happen
+        // after materialisation — the database cannot evaluate it.
+        var invoices = await _db.PurchaseInvoices
             .Where(i => i.BusinessId == businessId && i.Status == DocumentStatus.Posted)
+            .Include(i => i.Lines)
+            .Select(i => new { i.Id, i.Number, i.VendorId, Vendor = i.Vendor.Name, i.Date, i.Lines })
+            .ToListAsync();
+
+        var lines = invoices
             .SelectMany(i => i.Lines.Select(l => new
             {
-                i.Id, i.Number, i.VendorId, Vendor = i.Vendor.Name, i.Date, l.VatRate, l.Net,
+                i.Id, i.Number, i.VendorId, i.Vendor, i.Date, l.VatRate, l.Net,
             }))
-            .ToListAsync();
+            .ToList();
 
         var findings = new List<Finding>();
         foreach (var vendorGroup in lines.GroupBy(l => l.VendorId))
