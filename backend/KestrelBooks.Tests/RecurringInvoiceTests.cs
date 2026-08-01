@@ -36,7 +36,7 @@ public class RecurringInvoiceTests : IDisposable
         {
             Id = Guid.NewGuid(), BusinessId = _businessId, CustomerId = _customerId,
             Name = "Monthly retainer", NumberPrefix = "RET", NextNumber = 1,
-            Frequency = freq, PaymentTermsDays = 14, NextRunDate = firstRun,
+            Frequency = freq, PaymentTermsDays = 14, NextRunDate = firstRun, AnchorDate = firstRun,
             EndDate = end, AutoPost = autoPost,
         };
         t.Lines.Add(new RecurringInvoiceLine
@@ -138,6 +138,47 @@ public class RecurringInvoiceTests : IDisposable
         // Sweep as of a date that makes both due (one monthly, one weekly).
         var total = await Svc(ctx).RunAllDueAsync(new DateOnly(2026, 6, 8), _user);
         Assert.True(total >= 2, $"expected at least the monthly + one weekly, got {total}");
+    }
+
+    [Fact]
+    public async Task AMonthEndTemplate_KeepsInvoicingOnTheMonthEnd_AfterFebruary()
+    {
+        using var ctx = _db.Create();
+        // A retainer first raised on 31 January. February can only reach the 28th,
+        // but March must return to the 31st — stepping a month at a time would
+        // strand every later invoice on the 28th.
+        var id = AddTemplate(ctx, RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 31));
+
+        var created = await Svc(ctx).RunTemplateAsync(_businessId, id, new DateOnly(2026, 4, 30), _user);
+
+        var dates = await ctx.SalesInvoices
+            .Where(i => created.Contains(i.Id))
+            .OrderBy(i => i.Date)
+            .Select(i => i.Date)
+            .ToListAsync();
+
+        Assert.Equal(new[]
+        {
+            new DateOnly(2026, 1, 31),
+            new DateOnly(2026, 2, 28),
+            new DateOnly(2026, 3, 31),
+            new DateOnly(2026, 4, 30),
+        }, dates);
+    }
+
+    [Fact]
+    public async Task ATemplateWithNoAnchor_StillGenerates_UsingTheOldStepping()
+    {
+        using var ctx = _db.Create();
+        var id = AddTemplate(ctx, RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
+        // Simulate a template created before anchors existed.
+        var template = await ctx.RecurringInvoices.FirstAsync(t => t.Id == id);
+        template.AnchorDate = null;
+        await ctx.SaveChangesAsync();
+
+        var created = await Svc(ctx).RunTemplateAsync(_businessId, id, new DateOnly(2026, 3, 15), _user);
+
+        Assert.Equal(3, created.Count);
     }
 
     public void Dispose() => _db.Dispose();

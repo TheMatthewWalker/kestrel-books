@@ -49,7 +49,8 @@ public class RecurringController : ControllerBase
             Id = Guid.NewGuid(), BusinessId = businessId, CustomerId = req.CustomerId,
             Name = req.Name, NumberPrefix = string.IsNullOrWhiteSpace(req.NumberPrefix) ? "REC" : req.NumberPrefix,
             Frequency = req.Frequency, PaymentTermsDays = req.PaymentTermsDays,
-            NextRunDate = req.NextRunDate, EndDate = req.EndDate, AutoPost = req.AutoPost,
+            NextRunDate = req.NextRunDate, AnchorDate = req.NextRunDate,
+            EndDate = req.EndDate, AutoPost = req.AutoPost,
         };
         foreach (var l in req.Lines)
             t.Lines.Add(new RecurringInvoiceLine

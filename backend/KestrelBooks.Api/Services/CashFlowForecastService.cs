@@ -135,12 +135,18 @@ public class CashFlowForecastService
             });
             if (gross <= 0) continue;
 
+            // Project from the same anchor the generator uses, so the forecast
+            // agrees with the invoices that will actually be raised.
+            var index = template.GeneratedCount;
             var runDate = template.NextRunDate;
             while (runDate <= to && (template.EndDate is null || runDate <= template.EndDate))
             {
                 var expected = runDate.AddDays(template.PaymentTermsDays);
                 if (expected >= today && expected <= to) inflows.Add((expected, gross));
-                runDate = RecurringInvoiceService.Advance(runDate, template.Frequency);
+                index++;
+                runDate = template.AnchorDate is DateOnly anchor
+                    ? RecurringInvoiceService.NthRun(anchor, template.Frequency, index)
+                    : RecurringInvoiceService.Advance(runDate, template.Frequency);
             }
         }
 

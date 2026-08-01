@@ -14,6 +14,23 @@ public class RecurringInvoiceService
         _db = db; _docs = docs; _tenant = tenant;
     }
 
+    /// <summary>
+    /// The nth run date measured from the anchor. Adding N months to the anchor
+    /// clamps only where the target month is genuinely short, whereas adding one
+    /// month N times clamps permanently — 31 January stepped monthly lands on the
+    /// 28th in February and never recovers, moving every later invoice off the
+    /// month end.
+    /// </summary>
+    public static DateOnly NthRun(DateOnly anchor, RecurrenceFrequency freq, int n) => freq switch
+    {
+        RecurrenceFrequency.Weekly => anchor.AddDays(7 * n),
+        RecurrenceFrequency.Monthly => anchor.AddMonths(n),
+        RecurrenceFrequency.Quarterly => anchor.AddMonths(3 * n),
+        RecurrenceFrequency.Yearly => anchor.AddYears(n),
+        _ => anchor.AddMonths(n),
+    };
+
+    /// <summary>Single-step advance, kept for templates with no anchor recorded.</summary>
     public static DateOnly Advance(DateOnly from, RecurrenceFrequency freq) => freq switch
     {
         RecurrenceFrequency.Weekly => from.AddDays(7),
@@ -65,7 +82,9 @@ public class RecurringInvoiceService
             t.NextNumber++;
             t.GeneratedCount++;
             t.LastGeneratedDate = issueDate;
-            t.NextRunDate = Advance(t.NextRunDate, t.Frequency);
+            t.NextRunDate = t.AnchorDate is DateOnly anchor
+                ? NthRun(anchor, t.Frequency, t.GeneratedCount)
+                : Advance(t.NextRunDate, t.Frequency);
             await _db.SaveChangesAsync();
         }
         return created;

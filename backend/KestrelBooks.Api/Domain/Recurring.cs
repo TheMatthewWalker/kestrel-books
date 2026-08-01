@@ -23,6 +23,14 @@ public class RecurringInvoice
     public RecurrenceFrequency Frequency { get; set; }
     public int PaymentTermsDays { get; set; } = 30;
     public DateOnly NextRunDate { get; set; }
+    /// <summary>
+    /// The date the schedule is measured from. Every run date is computed as
+    /// anchor + N periods rather than by stepping forward from the last run, so a
+    /// template raised on the 31st clamps to the 28th in February and returns to
+    /// the 31st in March instead of staying there. Null on templates created
+    /// before this existed, which fall back to the old stepping behaviour.
+    /// </summary>
+    public DateOnly? AnchorDate { get; set; }
     public DateOnly? EndDate { get; set; }
     public bool AutoPost { get; set; }
     public bool Paused { get; set; }
