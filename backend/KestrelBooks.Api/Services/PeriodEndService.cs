@@ -138,7 +138,12 @@ public class PeriodEndService
             });
 
             s.PeriodsReleased++;
-            s.NextRunDate = due.AddMonths(1);
+            // Each release date is computed from the start rather than by adding a
+            // month to the last one. A schedule beginning 31 January must release
+            // on 28 Feb, 31 Mar, 30 Apr — stepping month-by-month would clamp to
+            // the 28th in February and then stay there for the rest of the year,
+            // quietly moving every remaining instalment off the month end.
+            s.NextRunDate = s.StartDate.AddMonths(s.PeriodsReleased);
             if (s.PeriodsReleased >= s.Periods)
             {
                 s.Status = ScheduleStatus.Completed;

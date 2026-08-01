@@ -128,6 +128,15 @@ cash flow forecast from observed payment behaviour.
 Still outstanding from this document: Open Banking feeds (commercially gated),
 multi-currency, and all of Phase 9 (MTD ITSA or CIS) and Phase 10 (practice platform).
 
+## Known latent issue
+
+`RecurringInvoiceService.Advance` steps forward from the *last* run date rather than
+from an anchor, so a template first raised on the 31st will slip to the 28th after
+February and stay there. The same defect was found and fixed in the period-end
+schedules by computing each date from the start date. Fixing it for recurring
+invoices needs a start-date column on the template, so it is a small schema change
+rather than a code-only fix — worth doing before any client runs month-end billing.
+
 ## Sequencing plan
 
 The ordering principle: correctness before convenience, convenience before

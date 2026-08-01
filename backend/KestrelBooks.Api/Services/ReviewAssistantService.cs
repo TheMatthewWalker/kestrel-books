@@ -183,11 +183,18 @@ public class ReviewAssistantService
     /// <summary>Manual journals in suspiciously round amounts — often estimates that never got revisited.</summary>
     private async Task<List<Finding>> RoundNumberJournalsAsync(Guid businessId, DateOnly from, DateOnly to)
     {
-        var journals = await _db.Journals
+        // SQLite cannot sum decimals server-side, so the totalling happens here.
+        var journals = (await _db.Journals
             .Where(j => j.BusinessId == businessId && j.Status == JournalStatus.Posted
                         && j.Source == SourceType.Manual && j.Date >= from && j.Date <= to)
-            .Select(j => new { j.Id, j.Number, j.Date, j.Narrative, Total = j.Lines.Sum(l => l.Debit) })
-            .ToListAsync();
+            .Select(j => new
+            {
+                j.Id, j.Number, j.Date, j.Narrative,
+                Debits = j.Lines.Select(l => l.Debit).ToList(),
+            })
+            .ToListAsync())
+            .Select(j => new { j.Id, j.Number, j.Date, j.Narrative, Total = j.Debits.Sum() })
+            .ToList();
 
         return journals
             .Where(j => j.Total >= 1_000 && j.Total % 1_000 == 0)

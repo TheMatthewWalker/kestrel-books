@@ -172,5 +172,33 @@ public class PeriodEndTests : IDisposable
             new DateOnly(2026, 6, 30), 0));
     }
 
+    [Fact]
+    public async Task AMonthEndSchedule_StaysOnTheMonthEnd_ThroughFebruary()
+    {
+        using var ctx = _db.Create();
+        var svc = Service(ctx);
+        // Starting 31 January: February can only reach the 28th, but March must
+        // return to the 31st rather than staying stuck on the 28th for good.
+        var s = await svc.CreateAsync(_businessId, _user, PeriodEndKind.Prepayment,
+            "Annual cover paid 31 January", 1_200m, _expense, _balanceSheet,
+            new DateOnly(2026, 1, 31), 12);
+
+        var created = await svc.RunAsync(_businessId, s.Id, new DateOnly(2026, 4, 30), _user);
+
+        var dates = await ctx.Journals
+            .Where(j => created.Contains(j.Id))
+            .OrderBy(j => j.Date)
+            .Select(j => j.Date)
+            .ToListAsync();
+
+        Assert.Equal(new[]
+        {
+            new DateOnly(2026, 1, 31),
+            new DateOnly(2026, 2, 28),
+            new DateOnly(2026, 3, 31),
+            new DateOnly(2026, 4, 30),
+        }, dates);
+    }
+
     public void Dispose() => _db.Dispose();
 }
