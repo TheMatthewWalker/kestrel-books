@@ -144,9 +144,7 @@ public class CashFlowForecastService
                 var expected = runDate.AddDays(template.PaymentTermsDays);
                 if (expected >= today && expected <= to) inflows.Add((expected, gross));
                 index++;
-                runDate = template.AnchorDate is DateOnly anchor
-                    ? RecurringInvoiceService.NthRun(anchor, template.Frequency, index)
-                    : RecurringInvoiceService.Advance(runDate, template.Frequency);
+                runDate = RecurringInvoiceService.NthRun(template.AnchorDate, template.Frequency, index);
             }
         }
 

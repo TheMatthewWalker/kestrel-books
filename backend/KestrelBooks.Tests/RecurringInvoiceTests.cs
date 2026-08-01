@@ -166,20 +166,5 @@ public class RecurringInvoiceTests : IDisposable
         }, dates);
     }
 
-    [Fact]
-    public async Task ATemplateWithNoAnchor_StillGenerates_UsingTheOldStepping()
-    {
-        using var ctx = _db.Create();
-        var id = AddTemplate(ctx, RecurrenceFrequency.Monthly, new DateOnly(2026, 1, 1));
-        // Simulate a template created before anchors existed.
-        var template = await ctx.RecurringInvoices.FirstAsync(t => t.Id == id);
-        template.AnchorDate = null;
-        await ctx.SaveChangesAsync();
-
-        var created = await Svc(ctx).RunTemplateAsync(_businessId, id, new DateOnly(2026, 3, 15), _user);
-
-        Assert.Equal(3, created.Count);
-    }
-
     public void Dispose() => _db.Dispose();
 }

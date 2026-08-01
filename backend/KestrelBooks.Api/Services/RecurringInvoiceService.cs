@@ -30,16 +30,6 @@ public class RecurringInvoiceService
         _ => anchor.AddMonths(n),
     };
 
-    /// <summary>Single-step advance, kept for templates with no anchor recorded.</summary>
-    public static DateOnly Advance(DateOnly from, RecurrenceFrequency freq) => freq switch
-    {
-        RecurrenceFrequency.Weekly => from.AddDays(7),
-        RecurrenceFrequency.Monthly => from.AddMonths(1),
-        RecurrenceFrequency.Quarterly => from.AddMonths(3),
-        RecurrenceFrequency.Yearly => from.AddYears(1),
-        _ => from.AddMonths(1),
-    };
-
     /// <summary>
     /// Generates every invoice now due for one template (catching up if the
     /// generator hasn't run for several periods), advancing the schedule each
@@ -82,9 +72,7 @@ public class RecurringInvoiceService
             t.NextNumber++;
             t.GeneratedCount++;
             t.LastGeneratedDate = issueDate;
-            t.NextRunDate = t.AnchorDate is DateOnly anchor
-                ? NthRun(anchor, t.Frequency, t.GeneratedCount)
-                : Advance(t.NextRunDate, t.Frequency);
+            t.NextRunDate = NthRun(t.AnchorDate, t.Frequency, t.GeneratedCount);
             await _db.SaveChangesAsync();
         }
         return created;

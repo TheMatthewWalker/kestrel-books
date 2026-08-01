@@ -135,8 +135,9 @@ one period from the *last* run date, which clamps permanently: a schedule starti
 on the 31st lands on the 28th in February and stays there, moving every later
 instalment or invoice off the month end. Both now compute each date as anchor plus
 N periods, so February clamps and March returns to the 31st. Recurring templates
-gained a nullable `AnchorDate`; templates created before it existed fall back to the
-old stepping rather than silently changing their schedule.
+gained a required `AnchorDate` set when the template is created. There is no
+fallback path and no single-step advance left in the codebase, so the drift cannot
+reappear by someone reaching for the wrong helper.
 
 ## Sequencing plan
 
